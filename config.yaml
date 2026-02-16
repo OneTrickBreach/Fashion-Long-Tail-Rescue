@@ -21,6 +21,10 @@ sampling:
   fraction: 0.05
   # Minimum interactions per user to retain
   min_interactions: 5
+  # Keep only the last N weeks of transactions (temporal pruning)
+  temporal_weeks: 6
+  # Articles with fewer than this many total purchases are "long tail"
+  long_tail_threshold: 10
 
 embedding:
   backbone: "resnet50"             # Pre-trained CNN for visual features
