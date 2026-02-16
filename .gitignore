@@ -1,0 +1,35 @@
+# === Virtual Environment ===
+.venv/
+
+# === Large Dataset (already tracked separately / too big for git) ===
+h-and-m-personalized-fashion-recommendations/
+h-and-m-personalized-fashion-recommendations.zip
+
+# === Generated Artifacts ===
+checkpoints/
+outputs/
+data/embeddings/*.npy
+data/embeddings/*.pt
+data/sampled/*.csv
+data/sampled/*.parquet
+
+# === Python ===
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# === Jupyter ===
+.ipynb_checkpoints/
+
+# === IDE ===
+.vscode/
+.idea/
+
+# === OS ===
+Thumbs.db
+.DS_Store
+
+# === Agent Rules (local only) ===
+rules.md

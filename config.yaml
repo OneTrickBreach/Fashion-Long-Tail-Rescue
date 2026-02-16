@@ -1,0 +1,63 @@
+# ============================================================
+# Central Configuration — Seeing the Unseen
+# CS7180 Applied Deep Learning | Ishan, Elizabeth, Nishant
+# ============================================================
+# Edit paths & hyper-parameters here; they propagate everywhere
+# via `src/utils/helpers.py::load_config()`.
+
+project:
+  name: "seeing-the-unseen"
+  seed: 42
+
+paths:
+  raw_data:       "h-and-m-personalized-fashion-recommendations"
+  sampled_data:   "data/sampled"
+  embeddings:     "data/embeddings"
+  checkpoints:    "checkpoints"
+  outputs:        "outputs"
+
+sampling:
+  # Fraction of transactions to keep for local development
+  fraction: 0.05
+  # Minimum interactions per user to retain
+  min_interactions: 5
+
+embedding:
+  backbone: "resnet50"             # Pre-trained CNN for visual features
+  dim: 2048                        # Output embedding dimension
+  batch_size: 64
+  device: "cuda"                   # "cuda" or "cpu"
+
+villain:
+  # Baseline: position-aware sequential recommender (text-only)
+  model_type: "sasrec"             # Options: sasrec, elo_ranking
+  max_seq_len: 50
+  hidden_dim: 64
+  num_heads: 2
+  num_layers: 2
+  dropout: 0.2
+  lr: 0.001
+  epochs: 30
+  batch_size: 256
+
+hero:
+  # Main model: multimodal BST + Attribute-Aware Contrastive head
+  max_seq_len: 50
+  hidden_dim: 128
+  num_heads: 4
+  num_layers: 3
+  dropout: 0.1
+  lr: 0.0005
+  epochs: 50
+  batch_size: 128
+  contrastive:
+    temperature: 0.07
+    hard_negatives: 10
+    weight: 0.3                    # Loss weight for contrastive term
+
+evaluation:
+  k: 12                           # nDCG@K, top-K recommendations
+  metrics:
+    - ndcg
+    - mrr
+    - catalog_coverage

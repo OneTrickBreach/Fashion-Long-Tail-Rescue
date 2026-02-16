@@ -1,0 +1,35 @@
+# ============================================================
+# Seeing the Unseen — Dependencies
+# ============================================================
+#
+# INSTALL (two steps — PyTorch needs a special index for CUDA 12.8):
+#
+#   Step 1 — PyTorch + CUDA 12.8 (RTX 5070 Ti / Blackwell):
+#     pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
+#
+#   Step 2 — Everything else:
+#     pip install -r requirements.txt
+#
+# ============================================================
+
+# --- Core (non-PyTorch) ---
+numpy>=1.24.0
+pandas>=2.0.0
+scikit-learn>=1.3.0
+scipy>=1.11.0
+
+# --- Vision Embeddings ---
+Pillow>=10.0.0
+timm>=0.9.0              # Pre-trained ResNet50 weights
+
+# --- Config & CLI ---
+pyyaml>=6.0
+tqdm>=4.65.0
+
+# --- Evaluation & Analytics ---
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# --- Notebooks ---
+jupyterlab>=4.0.0
+ipywidgets>=8.0.0
