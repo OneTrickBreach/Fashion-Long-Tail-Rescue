@@ -231,4 +231,41 @@ All utility functions (`load_config`, `set_seed`, `get_device`) confirmed workin
 | Torso (next 15%) | 5,011 articles (39.9%) |
 | Tail (last 5%) | 2,949 articles (23.5%) |
 
-**Next up (Day 2 — Feb 17):** Task 3 — Dataset class & DataLoaders.
+---
+
+### Day 2–3 — Feb 17, 2026
+
+#### ✅ Task 3: Dataset & DataLoader — DONE
+
+**What was built:** `src/data/dataset.py`
+- `build_id_maps()` — remaps raw 9-digit article IDs to contiguous 0-based indices (PAD=0)
+- `TransactionDataset` — leave-one-out temporal split:
+  - **Train:** sliding-window over prefix (excludes val+test items)
+  - **Val:** input = all but last 2, target = second-to-last
+  - **Test:** input = all but last, target = last
+- `build_dataloaders()` — factory returning train/val/test `DataLoader` + metadata dict
+- Right-padding to `max_seq_len=50`, position indices, seq_len tracking
+
+| Split | Samples | Batch shape |
+|-------|---------|-------------|
+| Train | ~46k | `[256, 50]` |
+| Val | ~5.9k | `[256, 50]` |
+| Test | ~5.9k | `[256, 50]` |
+
+**Vocabulary:** 12,560 items (12,559 articles + PAD token)
+
+#### ✅ Task 4: Villain Model Architecture — DONE
+
+**What was built:** `src/villain/model.py` — `VillainModel` (SASRec variant)
+- Item embedding + position embedding (summed, LayerNorm, dropout)
+- `nn.TransformerEncoder` with causal + padding masks (2 layers, 2 heads, dim=64)
+- Dot-product prediction head against all item embeddings
+- **Learnable `pop_bias`** vector (1 scalar per item) — the Villain's deliberate popularity bias
+- `predict_top_k()` convenience method for inference
+- **919,824 total parameters** — lightweight, well within VRAM
+
+Also fixed `src/villain/config.py` with working `get_villain_config()` merge.
+
+**Forward pass verified on GPU:** logits shape `[256, 12560]`, CE loss computable, top-12 predictions working.
+
+**Next up (Day 4 — Feb 19):** Task 5 — Training loop (`trainer.py`).
