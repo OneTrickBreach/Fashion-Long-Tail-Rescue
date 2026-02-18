@@ -18,11 +18,11 @@ paths:
 
 sampling:
   # Fraction of transactions to keep for local development
-  fraction: 0.05
+  fraction: 0.15                   # 15% of users (beefed up from 5%)
   # Minimum interactions per user to retain
   min_interactions: 5
   # Keep only the last N weeks of transactions (temporal pruning)
-  temporal_weeks: 6
+  temporal_weeks: 12               # 12 weeks (beefed up from 6)
   # Articles with fewer than this many total purchases are "long tail"
   long_tail_threshold: 10
 
@@ -36,16 +36,16 @@ villain:
   # Baseline: position-aware sequential recommender (text-only)
   model_type: "sasrec"             # Options: sasrec, elo_ranking
   max_seq_len: 50
-  hidden_dim: 64
-  num_heads: 2
-  num_layers: 2
+  hidden_dim: 128                  # beefed up from 64
+  num_heads: 4                     # beefed up from 2
+  num_layers: 3                    # beefed up from 2
   dropout: 0.2
   lr: 0.001
   weight_decay: 0.01               # AdamW L2 regularisation
-  epochs: 30
+  epochs: 50                       # beefed up from 30
   batch_size: 256
   checkpoint_every: 5              # Save checkpoint every N epochs
-  patience: 7                      # Early stopping: epochs without improvement
+  patience: 10                     # beefed up from 7
 
 hero:
   # Main model: multimodal BST + Attribute-Aware Contrastive head
