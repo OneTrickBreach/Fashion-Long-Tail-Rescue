@@ -116,10 +116,11 @@ class VillainModel(nn.Module):
         Upper-triangular causal mask so position t only attends to ≤ t.
 
         Returns:
-            (S, S) float mask with -inf for masked positions.
+            (S, S) bool mask with True for masked positions.
         """
+        # Use bool mask to match src_key_padding_mask dtype (avoids deprecation warning)
         return nn.Transformer.generate_square_subsequent_mask(
-            seq_len, device=device,
+            seq_len, device=device, dtype=torch.bool,
         )
 
     # ── Padding mask ─────────────────────────────────────────

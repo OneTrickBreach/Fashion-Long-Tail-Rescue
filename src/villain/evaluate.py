@@ -26,7 +26,7 @@ import pandas as pd
 import torch
 
 from src.utils.helpers import load_config, set_seed, get_device, setup_logging
-from src.data.dataset import build_dataloaders, build_id_maps
+from src.data.dataset import build_dataloaders
 from src.villain.config import get_villain_config
 from src.villain.model import VillainModel
 from src.utils.metrics import ndcg_at_k, mrr, catalog_coverage, compute_all_metrics

@@ -230,9 +230,10 @@ def train_villain(config: dict) -> dict:
         if history:
             best_so_far = 0.0
             epochs_without_improvement = 0
+            ndcg_key = f"val_ndcg@{eval_k}"
             for h in history:
-                if h.get("val_ndcg@12", 0) > best_so_far:
-                    best_so_far = h["val_ndcg@12"]
+                if h.get(ndcg_key, 0) > best_so_far:
+                    best_so_far = h[ndcg_key]
                     epochs_without_improvement = 0
                 else:
                     epochs_without_improvement += 1
