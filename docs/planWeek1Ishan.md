@@ -298,4 +298,32 @@ Fixes applied:
 .venv\Scripts\Activate.ps1; python -m src.villain.trainer
 ```
 
-**Next up (Day 5 — Feb 20):** Task 6 — Evaluate baseline results + documentation.
+---
+
+### Feb 18 — Task 6: Evaluation Hookup
+
+#### ✅ Task 6: Evaluation Hookup — DONE
+
+**What was built:** `src/villain/evaluate.py` — standalone eval script
+- Per-popularity-bucket breakdown (head / torso / tail)
+- Recommendation bias analysis: where do the top-12 recs go?
+- Learned pop-bias vector analysis
+
+**Test Results (best model, epoch 4):**
+
+| Metric | Overall | Head | Torso | Tail |
+|--------|---------|------|-------|------|
+| nDCG@12 | **0.1448** | 0.184 | 0.106 | 0.027 |
+| MRR | **0.1316** | 0.164 | 0.101 | 0.026 |
+| Samples | 36,234 | 20,049 | 14,132 | 2,053 |
+
+**Recommendation Bias (where top-12 recs go):**
+- Head items: **76.3%** of all recommendations
+- Torso items: 21.6%
+- Tail items: **2.2%** ← the Villain's injustice
+
+**Learned pop_bias vector:** mean=1.19, max=2.08 (head items boosted 2× vs neutral)
+
+**Key insight:** The Villain achieves 6.7× better nDCG on head items than tail items, and directs 76% of recommendations to just top-10% of items. This quantifies the "injustice" the Hero model must fix with visual features.
+
+**Next up:** Task 7 — Decision log & documentation.
