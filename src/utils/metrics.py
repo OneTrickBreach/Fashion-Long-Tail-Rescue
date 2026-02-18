@@ -1,7 +1,8 @@
 """
 metrics.py — Multi-Objective Evaluation Metrics
 =================================================
-Team: Ishan, Elizabeth, Nishant
+Team member: Ishan Biswas (implemented), Nishant Suresh (owner)
+Key functions: ndcg_at_k, mrr, catalog_coverage, compute_all_metrics
 
 PURPOSE:
     Implements the three core metrics for the multi-objective evaluation:
@@ -28,28 +29,52 @@ def ndcg_at_k(predicted, actual, k=12):
     Compute nDCG@K for a single user.
 
     Args:
-        predicted (list): Ranked list of predicted item IDs.
-        actual (list):    Ground-truth item IDs.
-        k (int):          Cutoff rank.
+        predicted (list): Ranked list of predicted item IDs (length >= k).
+        actual (int or list): Ground-truth item ID(s). If a single int,
+                              treated as a 1-element list.
+        k (int): Cutoff rank.
 
     Returns:
         float: nDCG@K score in [0, 1].
     """
-    raise NotImplementedError("TODO: Implement nDCG@K")
+    if isinstance(actual, (int, np.integer)):
+        actual = [actual]
+    actual_set = set(actual)
+
+    # DCG: sum of 1/log2(rank+1) for each hit in top-K
+    dcg = 0.0
+    for i, item in enumerate(predicted[:k]):
+        if item in actual_set:
+            dcg += 1.0 / np.log2(i + 2)  # i+2 because rank is 1-indexed
+
+    # Ideal DCG: best possible with len(actual) relevant items
+    ideal_hits = min(len(actual), k)
+    idcg = sum(1.0 / np.log2(i + 2) for i in range(ideal_hits))
+
+    if idcg == 0:
+        return 0.0
+    return dcg / idcg
 
 
 def mrr(predicted, actual):
     """
-    Compute Mean Reciprocal Rank for a single user.
+    Compute Reciprocal Rank for a single user.
 
     Args:
         predicted (list): Ranked list of predicted item IDs.
-        actual (list):    Ground-truth item IDs.
+        actual (int or list): Ground-truth item ID(s).
 
     Returns:
-        float: Reciprocal rank (0 if no hit).
+        float: Reciprocal rank (0 if no hit in the list).
     """
-    raise NotImplementedError("TODO: Implement MRR")
+    if isinstance(actual, (int, np.integer)):
+        actual = [actual]
+    actual_set = set(actual)
+
+    for i, item in enumerate(predicted):
+        if item in actual_set:
+            return 1.0 / (i + 1)
+    return 0.0
 
 
 def catalog_coverage(all_predictions, catalog_size, k=12):
@@ -58,20 +83,43 @@ def catalog_coverage(all_predictions, catalog_size, k=12):
 
     Args:
         all_predictions (list[list]): Top-K predictions per user.
-        catalog_size (int):           Total number of unique items.
+        catalog_size (int):           Total number of unique items (excl. PAD).
         k (int):                      Cutoff rank.
 
     Returns:
         float: Coverage ratio in [0, 1].
     """
-    raise NotImplementedError("TODO: Implement catalog coverage")
+    seen = set()
+    for preds in all_predictions:
+        seen.update(preds[:k])
+    # Remove PAD (0) if it somehow appears
+    seen.discard(0)
+    return len(seen) / catalog_size if catalog_size > 0 else 0.0
 
 
 def compute_all_metrics(predictions, ground_truth, catalog_size, k=12):
     """
-    Compute all three metrics and return as a dict.
+    Compute all three metrics across a set of users and return as a dict.
+
+    Args:
+        predictions (list[list]): Top-K predictions per user.
+        ground_truth (list):      Ground-truth item (one per user, int or list).
+        catalog_size (int):       Total number of unique items (excl. PAD).
+        k (int):                  Cutoff rank.
 
     Returns:
         dict: {"ndcg@12": float, "mrr": float, "catalog_coverage": float}
     """
-    raise NotImplementedError("TODO: Aggregate all metrics")
+    ndcg_scores = [
+        ndcg_at_k(pred, gt, k) for pred, gt in zip(predictions, ground_truth)
+    ]
+    mrr_scores = [
+        mrr(pred, gt) for pred, gt in zip(predictions, ground_truth)
+    ]
+    coverage = catalog_coverage(predictions, catalog_size, k)
+
+    return {
+        f"ndcg@{k}": float(np.mean(ndcg_scores)) if ndcg_scores else 0.0,
+        "mrr": float(np.mean(mrr_scores)) if mrr_scores else 0.0,
+        "catalog_coverage": coverage,
+    }

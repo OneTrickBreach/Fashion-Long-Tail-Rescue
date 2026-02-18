@@ -41,8 +41,11 @@ villain:
   num_layers: 2
   dropout: 0.2
   lr: 0.001
+  weight_decay: 0.01               # AdamW L2 regularisation
   epochs: 30
   batch_size: 256
+  checkpoint_every: 5              # Save checkpoint every N epochs
+  patience: 7                      # Early stopping: epochs without improvement
 
 hero:
   # Main model: multimodal BST + Attribute-Aware Contrastive head

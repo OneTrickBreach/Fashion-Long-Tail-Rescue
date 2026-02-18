@@ -39,10 +39,8 @@ OUTPUTS:
     - logits    (FloatTensor): (B, num_items) — unnormalized scores
 """
 
-import math
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 
 class VillainModel(nn.Module):
@@ -104,7 +102,11 @@ class VillainModel(nn.Module):
 
     def _init_weights(self):
         """Xavier-uniform for embeddings, default init for Transformer."""
-        nn.init.xavier_uniform_(self.item_embedding.weight[1:])  # skip PAD
+        # Initialise all item embeddings except PAD (index 0, stays at zero)
+        with torch.no_grad():
+            weight = self.item_embedding.weight
+            nn.init.xavier_uniform_(weight[1:])
+            weight[0].zero_()  # ensure PAD stays zero
         nn.init.xavier_uniform_(self.position_embedding.weight)
 
     # ── Causal mask ──────────────────────────────────────────

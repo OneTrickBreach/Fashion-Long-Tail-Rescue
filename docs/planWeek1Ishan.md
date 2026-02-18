@@ -268,4 +268,34 @@ Also fixed `src/villain/config.py` with working `get_villain_config()` merge.
 
 **Forward pass verified on GPU:** logits shape `[256, 12560]`, CE loss computable, top-12 predictions working.
 
-**Next up (Day 4 — Feb 19):** Task 5 — Training loop (`trainer.py`).
+---
+
+### Evening Feb 17 — Code Review + Task 5
+
+#### 🔍 Code Review of Tasks 1–4
+
+Fixes applied:
+- **`src/utils/metrics.py`** — implemented all 4 metric functions (were all `NotImplementedError`)
+- **`src/villain/model.py`** — fixed `_init_weights` non-contiguous tensor slice issue, removed unused imports
+- **`config.yaml`** — added `weight_decay`, `checkpoint_every`, `patience` to villain config
+
+#### ✅ Task 5: Training Loop — DONE
+
+**What was built:** `src/villain/trainer.py`
+- AdamW optimizer with weight_decay=0.01, ReduceLROnPlateau scheduler
+- Gradient clipping (max_norm=1.0) for transformer stability
+- Per-epoch validation: nDCG@12, MRR, Catalog Coverage
+- **Checkpoint save/resume:**
+  - `checkpoints/villain_latest.pt` — saved every 5 epochs
+  - `checkpoints/villain_best.pt` — saved on new best val nDCG@12
+  - Auto-resumes from `villain_latest.pt` on startup
+  - Stores: model weights, optimizer state, scheduler state, epoch, best_ndcg, full history
+- Early stopping (patience=7)
+- Final test eval loads best model, saves results to `outputs/villain_baseline_results.json`
+
+**Training command (run from project root with venv activated):**
+```powershell
+.venv\Scripts\Activate.ps1; python -m src.villain.trainer
+```
+
+**Next up (Day 5 — Feb 20):** Task 6 — Evaluate baseline results + documentation.
