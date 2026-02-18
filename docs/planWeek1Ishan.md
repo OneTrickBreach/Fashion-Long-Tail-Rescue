@@ -326,4 +326,29 @@ Fixes applied:
 
 **Key insight:** The Villain achieves 6.7× better nDCG on head items than tail items, and directs 76% of recommendations to just top-10% of items. This quantifies the "injustice" the Hero model must fix with visual features.
 
-**Next up:** Task 7 — Decision log & documentation.
+---
+
+### Feb 18 — Task 7: Decision Log & Documentation
+
+#### ✅ Task 7: Decision Log & Documentation — DONE
+
+**Deliverables:**
+- **`docs/decision_log.md`** — 7 key design decisions documented (pop-bias rationale, SASRec choice, leave-one-out split, stratified sampling, CE loss, optimizer, checkpoints)
+- **`docs/matrix_shapes.md`** — updated with actual values (V=26,933, D=128, B=256, S=50), forward-pass ASCII diagram, and 4.1M parameter breakdown
+- **Docstring audit** — all 8 `.py` files confirmed to have proper module docstrings per `rules.md §3`
+
+---
+
+## 🏁 Week 1 Complete
+
+All 7 tasks finished. The Villain baseline is trained, evaluated, and documented.
+
+| Task | Status | Key Result |
+|------|--------|------------|
+| 1. Environment | ✅ | PyTorch 2.10+cu128, RTX 5070 Ti |
+| 2. Sampling | ✅ | 430k txns, 36k users, 27k articles |
+| 3. Dataset | ✅ | Leave-one-out split, 322k train samples |
+| 4. Model | ✅ | SASRec 4.1M params |
+| 5. Training | ✅ | Early stop epoch 14, best nDCG@12=0.117 (val) |
+| 6. Evaluation | ✅ | Test nDCG@12=0.145, 76% recs→head items |
+| 7. Docs | ✅ | Decision log + matrix shapes + docstrings |
