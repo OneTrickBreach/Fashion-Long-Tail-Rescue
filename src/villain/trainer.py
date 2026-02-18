@@ -204,7 +204,7 @@ def train_villain(config: dict) -> dict:
         weight_decay=villain_cfg.get("weight_decay", 0.01),
     )
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode="max", factor=0.5, patience=3, verbose=False,
+        optimizer, mode="max", factor=0.5, patience=3,
     )
 
     # ── Training config ──────────────────────────────────────
