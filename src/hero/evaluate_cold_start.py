@@ -1,7 +1,13 @@
 """
 evaluate_cold_start.py
 ======================
-Simulates cold start "new arrival" recommendations.
+Team member: Ishan Biswas
+Key functions: run_cold_start_simulation
+
+PURPOSE:
+    Simulates cold start "new arrival" recommendations by testing target items
+    that have zero interactions in the training set, comparing Rank and Hit@12
+    between Villain (random guessing) and Hero (visual similarity rank).
 """
 import os
 import json

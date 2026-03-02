@@ -1,6 +1,9 @@
 """
 evaluate.py — Standalone Evaluation Script for Hero Model
 =========================================================
+Team member: Ishan Biswas
+Key functions: evaluate_hero
+
 PURPOSE:
     Loads a trained Hero checkpoint and runs full evaluation on the
     test set to report nDCG@12, MRR, Catalog Coverage, and 
