@@ -362,7 +362,7 @@ Day 7 (Feb 28):  Task 9 (docs) + buffer / bug fixes / coordination with Nishant
 - [ ] Hero nDCG@12 ≥ Villain nDCG@12 (0.145) *(Current: 0.1312)*
 - [x] Tail-item recommendation rate improves from Villain's 2.2% to ≥ 8% *(Achieved: 10.98%)*
 - [x] Cold-start simulation demonstrates the Hero can rank unseen items using visual features *(Avg rank improved by ~6000 positions)*
-- [ ] Contrastive learning head is functional and contributes to long-tail discovery
+- [x] Contrastive learning head is functional and contributes to long-tail discovery
 - [x] All evaluation results saved to `outputs/hero_baseline_results.json`
-- [ ] Decision log updated with BST design choices and ResNet50 extraction methodology
-- [ ] All code follows `rules.md` (docstrings, config-driven, no hard-coded paths)
+- [x] Decision log updated with BST design choices and ResNet50 extraction methodology
+- [x] All code follows `rules.md` (docstrings, config-driven, no hard-coded paths)
