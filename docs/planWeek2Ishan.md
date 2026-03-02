@@ -325,17 +325,23 @@ Day 7 (Feb 28):  Task 9 (docs) + buffer / bug fixes / coordination with Nishant
 - Checkpointing (saving `hero_best.pt` and `hero_latest.pt` to `checkpoints/`) works symmetrically to the Villain model.
 - Smoke tested for 2 validation epochs successfully.
 
+**Test Results (44 epochs):**
+- **nDCG@12:** 0.1312 *(did not beat Villain's 0.145 outright)*
+- **MRR:** 0.1205
+- **Catalog Coverage:** 0.6193 *(Massive coverage! The model explores the long-tail catalog incredibly well compared to textual models.)*
+- *Note: Hard negative mining is currently using a randomized fallback, which likely bottlenecks pure nDCG performance. We will evaluate tail-item recommendation rate in Task 7 and 8.*
+
 ---
 
 ## Success Criteria (End of Week 2)
 
 - [x] ResNet50 embeddings extracted for all ~105k articles → `data/embeddings/resnet50_embeddings.pt`
 - [x] Multimodal (visual + metadata) embeddings fused → `data/embeddings/multimodal_embeddings.pt`
-- [ ] `HeroModel` trains to convergence on the sampled data with visual embeddings
-- [ ] Hero nDCG@12 ≥ Villain nDCG@12 (0.145)
+- [x] `HeroModel` trains to convergence on the sampled data with visual embeddings
+- [ ] Hero nDCG@12 ≥ Villain nDCG@12 (0.145) *(Current: 0.1312)*
 - [ ] Tail-item recommendation rate improves from Villain's 2.2% to ≥ 8%
 - [ ] Cold-start simulation demonstrates the Hero can rank unseen items using visual features
 - [ ] Contrastive learning head is functional and contributes to long-tail discovery
-- [ ] All evaluation results saved to `outputs/hero_baseline_results.json`
+- [x] All evaluation results saved to `outputs/hero_baseline_results.json`
 - [ ] Decision log updated with BST design choices and ResNet50 extraction methodology
 - [ ] All code follows `rules.md` (docstrings, config-driven, no hard-coded paths)
