@@ -372,6 +372,4 @@ def train_hero(config: dict) -> dict:
 
 if __name__ == "__main__":
     cfg = load_config()
-    # Smoke test: force 2 epochs for quick verification
-    cfg["hero"]["epochs"] = 2
     train_hero(cfg)
