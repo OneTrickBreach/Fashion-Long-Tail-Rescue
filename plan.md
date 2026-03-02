@@ -26,24 +26,27 @@ This is a comprehensive `plan.md` tailored for your team and optimized for a loc
 
 **Goal:** Establish a fair "Villain" to one-up later and calibrate for local hardware.
 
-### Elizabeth: Memory-Efficient Preprocessing
+> **Status: ✅ COMPLETE** — All Phase 1 deliverables finished, merged to `main` on March 1, 2026.
 
-* **Memory Pivot:** Convert 31M transactions into `int32` format (reduces RAM usage by 2.5x).
-* **Temporal Pruning:** Focus on the **last 4-6 weeks** of H&M transactions to reflect current trends and keep training manageable.
-* **Labeling:** Identify the "Long Tail" articles (those with <10 total purchases in history) for the discovery study.
+### Elizabeth: Memory-Efficient Preprocessing — ✅ DONE
 
-### [Architecture] Ishan: Local Environment & Custom Baseline
+* ✅ **Memory Pivot:** `src/data/sampler.py::convert_full_transactions_to_int32()` — 2-pass chunked conversion with customer ID mapping (int32/float32 dtypes).
+* ⚠️ **Temporal Pruning:** Not implemented in Elizabeth's converter, but **covered** by Ishan's `create_sample()` function (temporal_weeks configurable via `config.yaml`).
+* ✅ **Labeling:** `src/data/sampler.py::enrich_articles_with_sales_columns()` — enriches articles with total/online/in-store sales, popularity logit smoothing, first sale dates. Long-tail `is_long_tail` boolean added by Ishan's sampler.
+* ✅ **Bonus:** Full evaluation metrics suite in `src/utils/metrics.py` — nDCG@12, MRR, catalog coverage, plus multi-objective metrics (popularity logits, tail-item rate).
 
-* **Environment:** Setup local GPU environment (PyTorch/CUDA).
-* **The Villain Build:** Code Iteration 1—a **Custom ELO Ranker**. This model scores items based on `Click-Rate / Position-Weight`, ensuring popular items stay at the top and niche items stay buried.
-* **Decision Log:** Document why we chose a position-biased baseline to simulate real-world e-commerce bias.
+### [Architecture] Ishan: Local Environment & Custom Baseline — ✅ DONE
 
+* ✅ **Environment:** PyTorch 2.10+cu128, RTX 5070 Ti (11.9 GB VRAM), all packages verified.
+* ✅ **The Villain Build:** `src/villain/model.py::VillainModel` — SASRec variant with learnable `pop_bias` vector, 4.1M parameters. Trained to convergence on sampled data.
+* ✅ **Decision Log:** `docs/decision_log.md` — 7 design decisions documented (position bias rationale, SASRec choice, leave-one-out split, stratified sampling, CE loss, AdamW optimizer, checkpoint strategy).
+* ✅ **Baseline Results:** nDCG@12=0.145, MRR=0.132, 76.3% of recommendations → head items, 2.2% → tail items. Saved to `outputs/villain_baseline_results.json`.
+* ✅ **Additional:** Data sampling pipeline (`create_sample()`), PyTorch Dataset & DataLoaders (`dataset.py`), standalone evaluator (`evaluate.py`), matrix shapes documentation (`docs/matrix_shapes.md`).
 
+### [KPIs] Nishant: The Discovery Gap Dashboard — ✅ DONE (partial)
 
-### [KPIs] Nishant: The Discovery Gap Dashboard
-
-* **KPI Metrics:** Setup evaluation scripts for **nDCG@12** and **Mean Reciprocal Rank (MRR)**.
-* **EDA:** Create the "Visibility Skew" chart showing that the bottom 90% of the catalog gets 0% of the revenue in the baseline.
+* ⚠️ **KPI Metrics:** nDCG@12 and MRR evaluation scripts were **not implemented by Nishant**. Covered by Elizabeth (`metrics.py`) and Ishan (integration in `trainer.py`/`evaluate.py`).
+* ✅ **EDA:** `src/utils/EDA.py::generate_visibility_skew_chart()` — generates the "Visibility Skew" chart. Output: `analytics/metrics/EDA_Long_tail_phase1.png`.
 
 ---
 
