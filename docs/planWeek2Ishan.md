@@ -76,7 +76,7 @@ The embedding section has `backbone: resnet50`, `dim: 2048`, `batch_size: 64`.
 
 ---
 
-### 3. Visual Embedding Integration into DataLoaders  *(~0.5 day)*
+### 3. [DONE] Visual Embedding Integration into DataLoaders  *(Task Complete)*
 
 | # | Sub-task | Details |
 |---|----------|---------|
@@ -296,6 +296,14 @@ Day 7 (Feb 28):  Task 9 (docs) + buffer / bug fixes / coordination with Nishant
 | Output file | `data/embeddings/multimodal_embeddings.pt` |
 
 **Run command:** `.venv\Scripts\Activate.ps1; python -m src.data.fuse_multimodal_embeddings`
+
+#### ✅ Task 3: Dataset & DataLoader Integration — DONE
+
+**What was built:** `src/data/dataset.py` updated with:
+- `load_multimodal_embeddings()` utility to map the feature bank onto the 1-based index space used by the model (PAD token at index 0 remains a zero vector).
+- `TransactionDataset` class now optionally accepts `visual_embeddings` and returns `visual_embeds` stacked to match `item_seq`.
+- `build_dataloaders()` factory updated to load visual features into CPU RAM when configuring the Hero model (`use_visual: true`).
+- A smoke test verified batches output correctly formatted visual embeddings `[128, 50, 2048]`.
 
 ---
 

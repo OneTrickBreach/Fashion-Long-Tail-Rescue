@@ -61,6 +61,34 @@ def build_id_maps(articles_path: str) -> tuple[dict, dict]:
     return id_to_idx, idx_to_id
 
 
+def load_multimodal_embeddings(
+    embeddings_path: str,
+    id_to_idx: dict[int, int],
+    num_items: int,
+) -> torch.Tensor:
+    """
+    Load multimodal embeddings and align them with the ID map constraints (1-based index).
+    Returns a (num_items, fused_dim) tensor on CPU. Index 0 remains all zeros.
+    """
+    logger.info(f"Loading multimodal embeddings from {embeddings_path}")
+    data = torch.load(embeddings_path, map_location="cpu", weights_only=False)
+    emb_matrix = data["embeddings"]
+    article_ids = data["article_ids"]
+    fused_dim = data["fused_dim"]
+
+    aligned_embeddings = torch.zeros((num_items, fused_dim), dtype=torch.float32)
+
+    found = 0
+    for i, aid in enumerate(article_ids):
+        if aid in id_to_idx:
+            idx = id_to_idx[aid]
+            aligned_embeddings[idx] = emb_matrix[i]
+            found += 1
+
+    logger.info(f"Aligned {found} / {len(id_to_idx)} items with multimodal embeddings.")
+    return aligned_embeddings
+
+
 # ──────────────────────────────────────────────────────────────
 # Dataset
 # ──────────────────────────────────────────────────────────────
@@ -89,6 +117,7 @@ class TransactionDataset(Dataset):
         mode: str = "train",
         num_items: int | None = None,
         seed: int = 42,
+        visual_embeddings: torch.Tensor | None = None,
     ):
         """
         Args:
@@ -98,6 +127,7 @@ class TransactionDataset(Dataset):
             mode:           "train", "val", or "test".
             num_items:      Total number of items (for negative sampling bounds).
             seed:           RNG seed for negative sampling.
+            visual_embeddings: Optional CPU tensor of shape (num_items, fused_dim).
         """
         super().__init__()
         assert mode in ("train", "val", "test"), f"Unknown mode: {mode}"
@@ -106,6 +136,7 @@ class TransactionDataset(Dataset):
         self.id_to_idx = id_to_idx
         self.num_items = num_items or (max(id_to_idx.values()) + 1)
         self.rng = np.random.RandomState(seed)
+        self.visual_embeddings = visual_embeddings
 
         self.samples = self._build_samples(user_sequences)
         logger.info(f"TransactionDataset({mode}): {len(self.samples)} samples")
@@ -169,12 +200,17 @@ class TransactionDataset(Dataset):
         positions = torch.arange(self.max_seq_len, dtype=torch.long)
         target = torch.tensor(tgt, dtype=torch.long)
 
-        return {
+        ret = {
             "item_seq": item_seq,
             "positions": positions,
             "target": target,
             "seq_len": torch.tensor(seq_len, dtype=torch.long),
         }
+
+        if self.visual_embeddings is not None:
+            ret["visual_embeds"] = self.visual_embeddings[item_seq]
+
+        return ret
 
 
 # ──────────────────────────────────────────────────────────────
@@ -223,18 +259,27 @@ def build_dataloaders(
     max_seq_len = model_cfg["max_seq_len"]
     batch_size = model_cfg["batch_size"]
 
+    # ── Load visual embeddings (if configured) ───────────────
+    visual_embeddings = None
+    if model_cfg.get("use_visual", False):
+        emb_path = os.path.join(paths["embeddings"], "multimodal_embeddings.pt")
+        visual_embeddings = load_multimodal_embeddings(emb_path, id_to_idx, num_items)
+
     # ── Create datasets ──────────────────────────────────────
     train_ds = TransactionDataset(
         user_sequences, id_to_idx, max_seq_len,
         mode="train", num_items=num_items, seed=seed,
+        visual_embeddings=visual_embeddings,
     )
     val_ds = TransactionDataset(
         user_sequences, id_to_idx, max_seq_len,
         mode="val", num_items=num_items, seed=seed,
+        visual_embeddings=visual_embeddings,
     )
     test_ds = TransactionDataset(
         user_sequences, id_to_idx, max_seq_len,
         mode="test", num_items=num_items, seed=seed,
+        visual_embeddings=visual_embeddings,
     )
 
     # ── Create loaders ───────────────────────────────────────
@@ -271,7 +316,13 @@ def build_dataloaders(
 
 if __name__ == "__main__":
     cfg = load_config()
-    train_ld, val_ld, test_ld, meta = build_dataloaders(cfg, mode="villain")
+    
+    # Force use_visual = True for the smoke test if hero mode config exists
+    if "hero" not in cfg:
+        cfg["hero"] = {"max_seq_len": 16, "batch_size": 128}
+    cfg["hero"]["use_visual"] = True
+    
+    train_ld, val_ld, test_ld, meta = build_dataloaders(cfg, mode="hero")
 
     batch = next(iter(train_ld))
     print("\n=== Smoke Test: first train batch ===")
