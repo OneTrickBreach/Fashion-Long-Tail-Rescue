@@ -246,9 +246,37 @@ Day 7 (Feb 28):  Task 9 (docs) + buffer / bug fixes / coordination with Nishant
 
 ---
 
+## Progress Journal
+
+### March 1, 2026
+
+#### ✅ Task 1: ResNet50 Feature Extraction — DONE
+
+**What was built:** `src/data/extract_visual_embeddings.py` — GPU-batched ResNet50 extraction pipeline with:
+- Frozen `torchvision.models.resnet50(IMAGENET1K_V2)`, final FC head stripped → 2048-dim avg-pool output
+- `ArticleImageDataset` for lazy image loading with `torchvision.io.read_image`
+- ImageNet normalisation (resize 256, center-crop 224, mean/std normalise)
+- Automatic zero-fill for missing/corrupt images, logged as `missing_ids`
+- Post-extraction verification: spot-checks 10 random embeddings for shape and non-zero values
+
+**Extraction results:**
+
+| Metric | Value |
+|--------|-------|
+| Total articles | 105,542 |
+| Missing images | 442 (0.4%) |
+| Embedding shape | `[105542, 2048]` |
+| Throughput | 113 img/s |
+| Total time | 932.7 s (~15.5 min) |
+| Output file | `data/embeddings/resnet50_embeddings.pt` |
+
+**Run command:** `.venv\Scripts\Activate.ps1; python -m src.data.extract_visual_embeddings`
+
+---
+
 ## Success Criteria (End of Week 2)
 
-- [ ] ResNet50 embeddings extracted for all ~105k articles → `data/embeddings/resnet50_embeddings.pt`
+- [x] ResNet50 embeddings extracted for all ~105k articles → `data/embeddings/resnet50_embeddings.pt`
 - [ ] Multimodal (visual + metadata) embeddings fused → `data/embeddings/multimodal_embeddings.pt`
 - [ ] `HeroModel` trains to convergence on the sampled data with visual embeddings
 - [ ] Hero nDCG@12 ≥ Villain nDCG@12 (0.145)
