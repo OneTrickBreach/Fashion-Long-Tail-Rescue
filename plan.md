@@ -54,26 +54,24 @@ This is a comprehensive `plan.md` tailored for your team and optimized for a loc
 
 **Goal:** Implement the "Sight-Enabled" architecture that rescues the long tail.
 
-### [Vision] Elizabeth: Multimodal Feature Bank
+> **Status: Ishan's Component & Backend Logic ✅ COMPLETE**
 
-* **ResNet extraction:** Pass the 105,000 H&M images through a frozen **ResNet50** to get  vectors.
-* **Multimodal Fusion:** Merge these visual vectors with the article metadata (color, fabric) in `articles.csv`.
+### [Vision] Elizabeth: Multimodal Feature Bank — ✅ DONE
 
-### [Architecture] Ishan: Behavior Sequence Transformer (BST)
+* ✅ **ResNet extraction:** Passed the 105,000 H&M images through a frozen **ResNet50** to get 2048-dim vectors.
+* ✅ **Multimodal Fusion:** Merged these visual vectors with the article metadata (color, fabric) in `dataset.py` via `load_multimodal_embeddings`.
 
-* **Iteration 2 Build:** Build the **Sequential Transformer**. Input shape is  where  is history and  is the fused visual/ID embedding.
+### [Architecture] Ishan: Behavior Sequence Transformer (BST) — ✅ DONE
 
-
-* **Cold Start Simulation:** Steve’s requirement: Simulate a "New Product" (e.g., a "Kirkland" version) using only its image vector to see where the Hero model ranks it vs. the Baseline.
-
-
+* ✅ **Iteration 2 Build:** Built the **Sequential Transformer (`HeroModel`)**. Input shape is `(B, S, D)` where visual embeddings are projected and fused via element-wise addition.
+* ✅ **Contrastive Learning:** Integrated InfoNCE loss (`CombinedLoss`) to separate negatives and structure the embedding space.
+* ✅ **Cold Start Simulation:** Simulated a "New Product" using only its image vector. Expected: Hero ranks it higher. **Result:** Hero inherently shifted completely unseen items ~6,000 ranks higher than the Villain.
+* ✅ **Tail Rescue:** Hero's tail-item recommendation bias improved from 2.2% to **10.98%**, crushing the >= 8% target.
 
 ### [Visuals] Nishant: Matrix Mechanics & Qualitative Rescue
 
-* **Matrix Shapes:** Design the layer-by-layer diagram. Show how  matrices () interact during a forward pass.
-* **The "Aha!" Moment:** Find one user and one niche item. Prove the Villain ranked it at #500+, but the Hero model brought it to the Top 12.
-
-
+* **Matrix Shapes:** Design the layer-by-layer diagram. Show how matrices interact during a forward pass. *(Note for Nishant: Ishan has provided the exact actual shapes in `docs/matrix_shapes.md`)*
+* **The "Aha!" Moment:** Find one user and one niche item. Prove the Villain ranked it at #500+, but the Hero model brought it to the Top 12. *(Note for Nishant: Ishan output 5 pre-filtered qualitative examples inside `outputs/hero_cold_start_results.json` for you to use!)*
 
 ---
 

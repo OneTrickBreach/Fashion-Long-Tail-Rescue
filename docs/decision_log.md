@@ -121,3 +121,19 @@ Model peaked at epoch 4, early-stopped at epoch 14 (patience=10).
 **Rationale:** Best-model checkpointing ensures the final test evaluation
 uses the model at peak generalization (not the overfit final epoch). The
 periodic latest checkpoint enables overnight training recovery.
+
+---
+
+## D8. Hero Multimodal Architecture (BST)
+
+**Decision:** Element-wise addition of visual projection to the item + position embeddings.
+
+**Rationale:** Adding the projected 128-dim ResNet50 visual vector directly to the text representation (before the Transformer layers) allows the self-attention mechanism to jointly attend to both sequence positions and visual styles simultaneously. This prevents the visual signal from being isolated or dominating the item ID sequences.
+
+---
+
+## D9. Contrastive Learning for the Long Tail
+
+**Decision:** InfoNCE Contrastive Loss combined with Cross Entropy (Loss = CE + λCL).
+
+**Rationale:** Pure CE loss heavily penalizes predicting niche items when a popular item was chosen. By adding an auxiliary contrastive learning objective, we explicitly pull in-session items closer in the embedding space while pushing negative samples apart. This creates a structurally sound multi-modal embedding space where the Hero can confidently recommend visually similar tail items without getting heavily penalized.

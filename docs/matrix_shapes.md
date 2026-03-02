@@ -39,7 +39,7 @@
 
 ---
 
-## 2. Visual Embedding Extraction *(Hero — future)*
+## 2. Visual Embedding Extraction *(Hero)*
 
 | Stage | Tensor | Shape | Notes |
 |-------|--------|-------|-------|
@@ -126,20 +126,20 @@ positions (B, S) ──► nn.Embedding(S, D) ──► pos_emb (B, S, D)
 
 ---
 
-## 4. Hero Model (Multimodal BST + Contrastive) *(future)*
+## 4. Hero Model (Multimodal BST + Contrastive)
 
 | Stage | Tensor | Shape | Notes |
 |-------|--------|-------|-------|
-| Text embedding | `text_emb` | `(B, S, D_hero)` | D_hero = 128 |
-| Visual embedding | `vis_emb` | `(B, S, 2048)` | From pre-computed |
-| Projection layer | `vis_proj` | `(B, S, D_hero)` | Linear(2048, 128) |
-| Fused input | `fused` | `(B, S, D_hero)` | text + vis_proj |
-| BST encoder output | `bst_out` | `(B, S, D_hero)` | 3-layer, 4-head |
-| Pooled representation | `user_repr` | `(B, D_hero)` | Last valid hidden |
-| Prediction logits | `logits` | `(B, V)` | Dot product |
-| Contrastive anchor | `anchor` | `(B, D_hero)` | User representation |
-| Contrastive positive | `positive` | `(B, D_hero)` | Target item embed |
-| Contrastive negatives | `negatives` | `(B, 10, D_hero)` | Hard negatives |
+| Text embedding | `text_emb` | `(B, S, D_hero)` | `(256, 50, 128)` — ID + Positional embeddings |
+| Visual embedding | `vis_emb` | `(B, S, 2048)` | `(256, 50, 2048)` — From pre-computed ResNet50 |
+| Projection layer | `vis_proj` | `(B, S, D_hero)` | `(256, 50, 128)` — Linear(2048, 128) |
+| Fused input | `fused` | `(B, S, D_hero)` | `(256, 50, 128)` — text_emb + vis_proj + LayerNorm |
+| BST encoder output | `bst_out` | `(B, S, D_hero)` | `(256, 50, 128)` — 3-layer, 4-head |
+| Pooled representation | `user_repr` | `(B, D_hero)` | `(256, 128)` — Last valid hidden state |
+| Prediction logits | `logits` | `(B, V)` | `(256, 26933)` — Dot product with item embeddings + visual embeddings |
+| Contrastive anchor | `anchor` | `(B, D_hero)` | `(256, 128)` — User representation |
+| Contrastive positive | `positive` | `(B, D_hero)` | `(256, 128)` — Target item embed + target visual embed |
+| Contrastive negatives | `negatives` | `(N, D_hero)` | `(num_negatives, 128)` — Hard negatives drawn per epoch |
 
 ---
 
