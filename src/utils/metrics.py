@@ -1,16 +1,21 @@
 """
 metrics.py — Multi-Objective Evaluation Metrics
 =================================================
-Team: Ishan, Elizabeth, Nishant
+Team: Elizabeth Coquillette (primary), Ishan Biswas (integration)
 
 PURPOSE:
-    Implements the three core metrics for the multi-objective evaluation:
+    Implements the core metrics for the multi-objective evaluation:
 
     1. nDCG@12   — Normalized Discounted Cumulative Gain at rank 12
                    (matches the H&M Kaggle competition metric)
     2. MRR       — Mean Reciprocal Rank across all test users
     3. Catalog Coverage — Fraction of the total catalog that appears in
                           at least one user's top-12 recommendations
+
+    Extended metrics for long-tail analysis:
+    4. popularity_logit_scores — smoothed popularity logits per item
+    5. mean_tail_score_at_k — average tail score in recommendations
+    6. tail_item_rate_at_k — fraction of recs that are tail items
 
     These metrics are computed for both the Villain and the Hero, and
     the results feed into the Pareto trade-off study in `analytics/pareto/`.
@@ -24,8 +29,11 @@ import numpy as np
 
 
 def _to_relevant_set(actual):
+    """Convert ground truth to a set, handling int scalars gracefully."""
     if actual is None:
         return set()
+    if isinstance(actual, (int, np.integer)):
+        return {actual}
     if isinstance(actual, (set, frozenset)):
         return set(actual)
     return set(actual)
@@ -37,7 +45,8 @@ def ndcg_at_k(predicted, actual, k=12):
 
     Args:
         predicted (list): Ranked list of predicted item IDs.
-        actual (list):    Ground-truth item IDs.
+        actual (int or list): Ground-truth item ID(s). If a single int,
+                              treated as a 1-element set.
         k (int):          Cutoff rank.
 
     Returns:
@@ -67,14 +76,14 @@ def ndcg_at_k(predicted, actual, k=12):
 
 def mrr(predicted, actual):
     """
-    Compute Mean Reciprocal Rank for a single user.
+    Compute Reciprocal Rank for a single user.
 
     Args:
         predicted (list): Ranked list of predicted item IDs.
-        actual (list):    Ground-truth item IDs.
+        actual (int or list): Ground-truth item ID(s).
 
     Returns:
-        float: Reciprocal rank (0 if no hit).
+        float: Reciprocal rank (0 if no hit in the list).
     """
     relevant = _to_relevant_set(actual)
     if not relevant:
@@ -92,7 +101,7 @@ def catalog_coverage(all_predictions, catalog_size, k=12):
 
     Args:
         all_predictions (list[list]): Top-K predictions per user.
-        catalog_size (int):           Total number of unique items.
+        catalog_size (int):           Total number of unique items (excl. PAD).
         k (int):                      Cutoff rank.
 
     Returns:
@@ -106,6 +115,8 @@ def catalog_coverage(all_predictions, catalog_size, k=12):
     surfaced = set()
     for pred in all_predictions:
         surfaced.update(list(pred)[:k])
+    # Remove PAD (0) if it somehow appears
+    surfaced.discard(0)
     return float(len(surfaced) / catalog_size)
 
 
@@ -181,13 +192,13 @@ def tail_item_rate_at_k(all_predictions, item_sales_counts, tail_threshold, k=12
 
 def compute_all_metrics(predictions, ground_truth, catalog_size, k=12):
     """
-    Compute all three metrics and return as a dict.
+    Compute all three core metrics across a set of users and return as a dict.
 
     Args:
-        predictions (list[list]): ranked item ids per user
-        ground_truth (list[list] | list[set]): relevant item ids per user
-        catalog_size (int): total number of items in catalog
-        k (int): top-k cut
+        predictions (list[list]): Top-K predictions per user.
+        ground_truth (list):      Ground-truth item(s) per user (int or list).
+        catalog_size (int):       Total number of unique items (excl. PAD).
+        k (int):                  Cutoff rank.
 
     Returns:
         dict: {"ndcg@k": float, "mrr": float, "catalog_coverage": float}

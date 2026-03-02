@@ -1,7 +1,8 @@
 """
 config.py — Villain-Specific Hyperparameter Overrides
 =======================================================
-Team: Ishan, Elizabeth, Nishant
+Team member: Ishan Biswas
+Key functions: get_villain_config
 
 PURPOSE:
     Provides defaults and validation for Villain hyperparameters.
@@ -21,6 +22,19 @@ VILLAIN_DEFAULTS = {
 }
 
 
-def get_villain_config(global_config):
-    """Merge global config with villain defaults."""
-    raise NotImplementedError("TODO: Implement config merging")
+def get_villain_config(global_config: dict) -> dict:
+    """
+    Merge global config's villain section with defaults.
+
+    Values in config.yaml override VILLAIN_DEFAULTS.
+
+    Args:
+        global_config: Full parsed config.yaml dict.
+
+    Returns:
+        dict with all villain hyperparameters resolved.
+    """
+    merged = {**VILLAIN_DEFAULTS}
+    if "villain" in global_config:
+        merged.update(global_config["villain"])
+    return merged
