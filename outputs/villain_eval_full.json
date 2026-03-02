@@ -1,0 +1,50 @@
+{
+  "overall": {
+    "ndcg@12": 0.14482976764265731,
+    "mrr": 0.13160352669170353,
+    "catalog_coverage": 0.5782340709936136,
+    "avg_loss": 8.117052511430122
+  },
+  "per_bucket": {
+    "head": {
+      "ndcg@12": 0.1840780413991698,
+      "mrr": 0.1640996441834389,
+      "catalog_coverage": 0.4260359423733848,
+      "num_samples": 20049
+    },
+    "torso": {
+      "ndcg@12": 0.10620718907051141,
+      "mrr": 0.10083613060367944,
+      "catalog_coverage": 0.4692559037576118,
+      "num_samples": 14132
+    },
+    "tail": {
+      "ndcg@12": 0.0274043608415107,
+      "mrr": 0.026045894896357634,
+      "catalog_coverage": 0.2615104708153869,
+      "num_samples": 2053
+    }
+  },
+  "recommendation_bias": {
+    "head": {
+      "count": 331537,
+      "pct": 0.7625
+    },
+    "torso": {
+      "count": 93931,
+      "pct": 0.216
+    },
+    "tail": {
+      "count": 9340,
+      "pct": 0.0215
+    }
+  },
+  "pop_bias_stats": {
+    "mean": 1.1936426162719727,
+    "std": 0.188913494348526,
+    "min": 0.8337586522102356,
+    "max": 2.0848472118377686
+  },
+  "checkpoint": "checkpoints/villain_best.pt",
+  "checkpoint_epoch": 4
+}

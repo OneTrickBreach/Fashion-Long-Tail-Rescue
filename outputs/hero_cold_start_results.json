@@ -1,0 +1,14 @@
+{
+  "num_eval_samples": 100,
+  "villain": {
+    "avg_rank": 26159.26,
+    "hit_at_12": 0.0,
+    "hit_at_50": 0.0
+  },
+  "hero": {
+    "avg_rank": 20374.91,
+    "hit_at_12": 0.0,
+    "hit_at_50": 0.0
+  },
+  "qualitative_examples": []
+}

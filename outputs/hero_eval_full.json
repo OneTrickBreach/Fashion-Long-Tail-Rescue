@@ -1,0 +1,44 @@
+{
+  "overall": {
+    "ndcg@12": 0.053468359219687615,
+    "mrr": 0.0451701755249528,
+    "catalog_coverage": 0.6148447942967473,
+    "avg_loss": 12.130807003504794
+  },
+  "per_bucket": {
+    "head": {
+      "ndcg@12": 0.07778253207096031,
+      "mrr": 0.0660704991479266,
+      "catalog_coverage": 0.45221298084063566,
+      "num_samples": 18301
+    },
+    "torso": {
+      "ndcg@12": 0.03379970546878368,
+      "mrr": 0.02821560323966484,
+      "catalog_coverage": 0.48548195455220555,
+      "num_samples": 13507
+    },
+    "tail": {
+      "ndcg@12": 0.012955668045335671,
+      "mrr": 0.010490687326430662,
+      "catalog_coverage": 0.4036462201099064,
+      "num_samples": 4426
+    }
+  },
+  "recommendation_bias": {
+    "head": {
+      "count": 235024,
+      "pct": 0.5405
+    },
+    "torso": {
+      "count": 152026,
+      "pct": 0.3496
+    },
+    "tail": {
+      "count": 47758,
+      "pct": 0.1098
+    }
+  },
+  "checkpoint": "checkpoints\\hero_best.pt",
+  "checkpoint_epoch": 34
+}
