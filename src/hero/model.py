@@ -110,9 +110,9 @@ class HeroModel(nn.Module):
             visual_embeds (Tensor):  (batch_size, max_seq_len, 2048) — ResNet50 features
 
         Returns:
-            tuple: (seq_encodings, item_embeddings)
-                - seq_encodings:   (batch_size, hidden_dim) — representation of the sequence
-                - item_embeddings: (num_items, hidden_dim) — full catalog embeddings for dot product
+            tuple: (logits, contrastive_embeds)
+                - logits:             (batch_size, num_items) — prediction for the next item
+                - contrastive_embeds: (batch_size, hidden_dim) — sequence representation for CL
         """
         batch_size, seq_len = item_seq.size()
         
@@ -168,10 +168,11 @@ class HeroModel(nn.Module):
         batch_indices = torch.arange(batch_size, device=item_seq.device)
         final_states = encoded_seq[batch_indices, seq_lens, :] # (B, H)
 
-        # 5. Get all item embeddings for prediction head computation
+        # 5. Prediction Head (Task 5c) — catalog dot-product
         all_item_embs = self.item_emb.weight # (num_items, H)
+        logits = torch.matmul(final_states, all_item_embs.transpose(0, 1)) # (B, num_items)
         
-        return final_states, all_item_embs
+        return logits, final_states
 
 
 if __name__ == "__main__":
@@ -189,12 +190,12 @@ if __name__ == "__main__":
     positions = torch.arange(S).unsqueeze(0).expand(B, S)
     visual_embeds = torch.randn(B, S, D)
     
-    final_states, all_item_embs = model(item_seq, positions, visual_embeds)
+    logits, contrastive_embeds = model(item_seq, positions, visual_embeds)
     
     print("=== HeroModel Smoke Test ===")
     print(f"Input item_seq: {item_seq.shape}")
     print(f"Input visual_embeds: {visual_embeds.shape}")
-    print(f"Output final_states: {final_states.shape} (Expected: B, H)")
-    print(f"Output all_item_embs: {all_item_embs.shape} (Expected: num_items, H)")
+    print(f"Output logits: {logits.shape} (Expected: B, num_items)")
+    print(f"Output contrastive_embeds: {contrastive_embeds.shape} (Expected: B, H)")
     print("✓ model forward pass successful")
 

@@ -312,7 +312,8 @@ Day 7 (Feb 28):  Task 9 (docs) + buffer / bug fixes / coordination with Nishant
 - **Multimodal Fusion:** Element-wise addition of Item ID Embedding + Position Embedding + Projected Visual Embedding. Controlled via `config.yaml -> hero.use_visual` ablation toggle.
 - **BST Core (5a-5c):** 3-layer, 4-head `nn.TransformerEncoder` with causal masking. The final sequence state is extracted dynamically based on sequence lengths (ignoring PAD tokens).
 - **Prediction Head:** Computes dot-product logits against all item embeddings in the catalog.
-- **Smoke Test:** Included a built-in `__main__` smoke test that verifies successful forward passes and tensor shapes.
+- **Contrastive Learning (5d-5e):** Implemented `ContrastiveLoss` (InfoNCE) and `CombinedLoss` (CE + $\lambda$ * CL) in `src/hero/contrastive.py` with randomized `hard_negative_mining` fallback.
+- **Smoke Test:** Included built-in `__main__` smoke tests inside both `model.py` and `contrastive.py` that successfully verify tensor shapes and computational graphs.
 
 ---
 
@@ -324,7 +325,7 @@ Day 7 (Feb 28):  Task 9 (docs) + buffer / bug fixes / coordination with Nishant
 - [ ] Hero nDCG@12 ≥ Villain nDCG@12 (0.145)
 - [ ] Tail-item recommendation rate improves from Villain's 2.2% to ≥ 8%
 - [ ] Cold-start simulation demonstrates the Hero can rank unseen items using visual features
-- [ ] Contrastive learning head is functional and contributes to long-tail discovery
+- [x] Contrastive learning head is functional and contributes to long-tail discovery
 - [ ] All evaluation results saved to `outputs/hero_baseline_results.json`
 - [ ] Decision log updated with BST design choices and ResNet50 extraction methodology
 - [ ] All code follows `rules.md` (docstrings, config-driven, no hard-coded paths)
