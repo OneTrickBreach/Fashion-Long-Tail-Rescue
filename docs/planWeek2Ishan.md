@@ -145,7 +145,7 @@ Hero (Phase 2):
 
 ---
 
-### 6. Training Loop  *(~1 day)*
+### 6. [DONE] Training Loop  *(Task Complete)*
 
 | # | Sub-task | Details |
 |---|----------|---------|
@@ -314,6 +314,16 @@ Day 7 (Feb 28):  Task 9 (docs) + buffer / bug fixes / coordination with Nishant
 - **Prediction Head:** Computes dot-product logits against all item embeddings in the catalog.
 - **Contrastive Learning (5d-5e):** Implemented `ContrastiveLoss` (InfoNCE) and `CombinedLoss` (CE + $\lambda$ * CL) in `src/hero/contrastive.py` with randomized `hard_negative_mining` fallback.
 - **Smoke Test:** Included built-in `__main__` smoke tests inside both `model.py` and `contrastive.py` that successfully verify tensor shapes and computational graphs.
+
+#### ✅ Task 6: Hero Training Loop — DONE
+
+**What was built:** `src/hero/trainer.py`
+- Setup the core `train_hero()` runtime compatible with the config parameters.
+- Built a multi-objective training loop that computes both CrossEntropy and ContrastiveLoss.
+- Hard negative mining logic is integrated sequentially into the batch processing (mining is run per-epoch).
+- Custom `evaluate` function supports evaluating the Hero model with visual features and producing `nDCG@12`, `MRR`, and `Catalog Coverage`.
+- Checkpointing (saving `hero_best.pt` and `hero_latest.pt` to `checkpoints/`) works symmetrically to the Villain model.
+- Smoke tested for 2 validation epochs successfully.
 
 ---
 
