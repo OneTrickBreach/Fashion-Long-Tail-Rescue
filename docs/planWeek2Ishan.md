@@ -26,6 +26,10 @@ and multimodal metadata fusion).  My responsibilities fall into three buckets:
    Hero ranks it meaningfully using only its image vector, whereas the Villain cannot
    rank it at all.
 
+**Technical Audit (Status: Tasks 1 & 2 Complete):**
+- **Task 1:** 105,542 articles processed through ResNet50 V2. 442 images missing (0.4% coverage gap). Zero-vectors used as placeholders to maintain alignment.
+- **Task 2:** Offline fusion uses 8 categorical columns from `articles.csv` (320-dim one-hot). Projected to 2048-dim using a deterministic Xavier-initialized linear layer. This acts as a static "Multimodal Token" which will be further projected/tuned inside the `HeroModel`.
+
 All hyperparameters and paths come from `config.yaml` (single source of truth per
 `rules.md §2`).  The hero section already exists with preliminary settings
 (`hidden_dim=128`, `num_heads=4`, `num_layers=3`, `lr=0.0005`, `batch_size=128`).
@@ -35,7 +39,7 @@ The embedding section has `backbone: resnet50`, `dim: 2048`, `batch_size: 64`.
 
 ## Task Breakdown
 
-### 1. ResNet50 Feature Extraction  *(~1 day)*  — *Elizabeth's portion*
+### 1. [DONE] ResNet50 Feature Extraction  *(Task Complete)*  — *Elizabeth's portion*
 
 > **Originally assigned to Elizabeth.**  I am covering this because she is absent.
 
@@ -57,7 +61,7 @@ The embedding section has `backbone: resnet50`, `dim: 2048`, `batch_size: 64`.
 
 ---
 
-### 2. Multimodal Metadata Fusion  *(~0.5 day)*  — *Elizabeth's portion*
+### 2. [DONE] Multimodal Metadata Fusion  *(Task Complete)*  — *Elizabeth's portion*
 
 > **Originally assigned to Elizabeth.**  Merge ResNet50 vectors with article metadata.
 
