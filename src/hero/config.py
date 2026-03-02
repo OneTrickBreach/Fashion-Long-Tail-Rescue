@@ -25,6 +25,19 @@ HERO_DEFAULTS = {
 }
 
 
-def get_hero_config(global_config):
-    """Merge global config with hero defaults."""
-    raise NotImplementedError("TODO: Implement config merging")
+def get_hero_config(global_config: dict) -> dict:
+    """
+    Merge global config's hero section with defaults.
+
+    Values in config.yaml override HERO_DEFAULTS.
+
+    Args:
+        global_config: Full parsed config.yaml dict.
+
+    Returns:
+        dict with all hero hyperparameters resolved.
+    """
+    merged = {**HERO_DEFAULTS}
+    if "hero" in global_config:
+        merged.update(global_config["hero"])
+    return merged

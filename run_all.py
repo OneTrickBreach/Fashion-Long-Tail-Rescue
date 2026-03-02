@@ -48,32 +48,34 @@ def main():
     # Stage 1: Data Sampling
     if args.stage in ("all", "sample") and not args.skip_sampling:
         logger.info("[1/5] Sampling data...")
-        # TODO: from src.data.sampler import create_sample
-        # create_sample(config)
+        from src.data.sampler import create_sample
+        create_sample(config)
 
     # Stage 2: Visual Embedding Extraction
     if args.stage in ("all", "embed"):
         logger.info("[2/5] Extracting visual embeddings...")
-        # TODO: from src.data.embeddings import extract_embeddings
+        # Phase 2: from src.data.embeddings import extract_embeddings
         # extract_embeddings(config)
+        logger.info("  (skipped — Phase 2 feature)")
 
     # Stage 3: Train Villain (Baseline)
     if args.stage in ("all", "train_villain"):
         logger.info("[3/5] Training the Villain (baseline)...")
-        # TODO: from src.villain.trainer import train_villain
-        # train_villain(config)
+        from src.villain.trainer import train_villain
+        train_villain(config)
 
     # Stage 4: Train Hero (Main Model)
     if args.stage in ("all", "train_hero"):
         logger.info("[4/5] Training the Hero (main model)...")
-        # TODO: from src.hero.trainer import train_hero
+        # Phase 2: from src.hero.trainer import train_hero
         # train_hero(config)
+        logger.info("  (skipped — Phase 2 feature)")
 
     # Stage 5: Evaluate Both Models
     if args.stage in ("all", "evaluate"):
         logger.info("[5/5] Evaluating both models...")
-        # TODO: from src.utils.metrics import compute_all_metrics
-        # Run evaluation and generate comparison report
+        from src.villain.evaluate import evaluate_villain
+        evaluate_villain(config)
 
     logger.info("Pipeline complete.")
 
