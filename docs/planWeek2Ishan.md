@@ -272,12 +272,33 @@ Day 7 (Feb 28):  Task 9 (docs) + buffer / bug fixes / coordination with Nishant
 
 **Run command:** `.venv\Scripts\Activate.ps1; python -m src.data.extract_visual_embeddings`
 
+#### ✅ Task 2: Multimodal Metadata Fusion — DONE
+
+**What was built:** `src/data/fuse_multimodal_embeddings.py` — offline fusion pipeline with:
+- One-hot encoding of 8 categorical metadata columns from `articles.csv` (colour, product type, garment group, etc.)
+- Concatenation of ResNet50 visual (2048) + metadata (320) = 2368-dim vector
+- Linear projection + LayerNorm → 2048-dim fused embedding (deterministic, seed=42)
+- Post-fusion verification with spot-checks
+
+**Fusion results:**
+
+| Metric | Value |
+|--------|-------|
+| Articles | 105,542 |
+| Visual dim | 2048 |
+| Metadata dim | 320 (8 columns one-hot) |
+| Fused dim | 2048 |
+| Total time | ~5 s |
+| Output file | `data/embeddings/multimodal_embeddings.pt` |
+
+**Run command:** `.venv\Scripts\Activate.ps1; python -m src.data.fuse_multimodal_embeddings`
+
 ---
 
 ## Success Criteria (End of Week 2)
 
 - [x] ResNet50 embeddings extracted for all ~105k articles → `data/embeddings/resnet50_embeddings.pt`
-- [ ] Multimodal (visual + metadata) embeddings fused → `data/embeddings/multimodal_embeddings.pt`
+- [x] Multimodal (visual + metadata) embeddings fused → `data/embeddings/multimodal_embeddings.pt`
 - [ ] `HeroModel` trains to convergence on the sampled data with visual embeddings
 - [ ] Hero nDCG@12 ≥ Villain nDCG@12 (0.145)
 - [ ] Tail-item recommendation rate improves from Villain's 2.2% to ≥ 8%
