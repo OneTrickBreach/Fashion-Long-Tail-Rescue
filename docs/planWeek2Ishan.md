@@ -93,7 +93,7 @@ The embedding section has `backbone: resnet50`, `dim: 2048`, `batch_size: 64`.
 
 ---
 
-### 4. Multimodal Fusion Layer  *(~0.5 day)*
+### 4. [DONE] Multimodal Fusion Layer  *(Task Complete)*
 
 | # | Sub-task | Details |
 |---|----------|---------|
@@ -114,7 +114,7 @@ fused:          (batch_size, max_seq_len, hidden_dim)   — item + pos + visual
 
 ---
 
-### 5. BST Model Architecture  *(~1.5 days)*
+### 5. [DONE] BST Model Architecture  *(Task Complete)*
 
 > This is the core deliverable for Week 2.
 
@@ -304,6 +304,15 @@ Day 7 (Feb 28):  Task 9 (docs) + buffer / bug fixes / coordination with Nishant
 - `TransactionDataset` class now optionally accepts `visual_embeddings` and returns `visual_embeds` stacked to match `item_seq`.
 - `build_dataloaders()` factory updated to load visual features into CPU RAM when configuring the Hero model (`use_visual: true`).
 - A smoke test verified batches output correctly formatted visual embeddings `[128, 50, 2048]`.
+
+#### ✅ Task 4 & 5: Multimodal HeroModel Architecture — DONE
+
+**What was built:** `src/hero/model.py` implemented with:
+- **VisualProjection:** Projects 2048-dim multimodal features down to `hidden_dim` (128 by default) via `nn.Linear` + `LayerNorm` + `Dropout`.
+- **Multimodal Fusion:** Element-wise addition of Item ID Embedding + Position Embedding + Projected Visual Embedding. Controlled via `config.yaml -> hero.use_visual` ablation toggle.
+- **BST Core (5a-5c):** 3-layer, 4-head `nn.TransformerEncoder` with causal masking. The final sequence state is extracted dynamically based on sequence lengths (ignoring PAD tokens).
+- **Prediction Head:** Computes dot-product logits against all item embeddings in the catalog.
+- **Smoke Test:** Included a built-in `__main__` smoke test that verifies successful forward passes and tensor shapes.
 
 ---
 
