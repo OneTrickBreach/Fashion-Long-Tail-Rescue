@@ -13,8 +13,10 @@ PURPOSE:
     item has few transactions, it can borrow representation strength from
     visually similar popular items.
 
-KEY COMPONENTS (to implement):
-    - ContrastiveLoss:      InfoNCE / NT-Xent style loss with temperature
+KEY COMPONENTS:
+    - ContrastiveLoss:       InfoNCE / NT-Xent style loss with temperature
+    - MultiObjectiveLoss:    Phase 3 three-term loss: L_CE + λ_CL * L_CL + λ_disc * L_discovery
+                             Discovery term penalises placing softmax mass on popular items.
     - hard_negative_mining:  Select informative negatives based on attribute
                              overlap (items that share SOME but not ALL
                              attributes are the hardest negatives)
@@ -64,10 +66,12 @@ class ContrastiveLoss(nn.Module):
         return F.cross_entropy(logits, labels)
 
 
-class CombinedLoss(nn.Module):
+class MultiObjectiveLoss(nn.Module):
     """
-    Combined Loss for HeroModel:
-    L_total = L_CE(predictions, targets) + lambda * L_contrastive(anchor, pos, negs)
+    Multi-Objective Loss for HeroModel (Phase 3):
+    L_total = L_CE(predictions, targets) 
+            + lambda_CL * L_contrastive(anchor, pos, negs)
+            + lambda_disc * L_discovery(logits, pop_logits)
     """
     def __init__(self, config: dict):
         super().__init__()
@@ -76,16 +80,32 @@ class CombinedLoss(nn.Module):
         cl_config = config.get("hero", {}).get("contrastive", {})
         temperature = cl_config.get("temperature", 0.07)
         self.cl_weight = cl_config.get("weight", 0.3)
+        self.disc_weight = config.get("hero", {}).get("discovery_weight", 0.0)
         
         self.contrastive_loss = ContrastiveLoss(temperature=temperature)
 
-    def forward(self, logits, targets, anchor, positive, negatives):
+    def forward(self, logits, targets, anchor, positive, negatives, pop_logits=None):
         """
-        Computes the combined loss.
+        Computes the multi-objective loss.
         """
         loss_ce = self.ce_loss(logits, targets)
         loss_cl = self.contrastive_loss(anchor, positive, negatives)
-        return loss_ce + self.cl_weight * loss_cl
+        
+        loss_total = loss_ce + self.cl_weight * loss_cl
+        
+        # Phase 3: Discovery Loss
+        # Always return a tensor for consistent API (zero when disabled)
+        loss_disc = torch.tensor(0.0, device=logits.device)
+        if self.disc_weight > 0.0 and pop_logits is not None:
+            # logits: (batch_size, num_items)
+            # pop_logits: (num_items,) — pre-computed, PAD index should be 0.0
+            probs = F.softmax(logits, dim=-1)
+            # L_discovery = mean over batch of dot(probs, pop_logits)
+            # Penalises placing high softmax mass on high-popularity items
+            loss_disc = (probs * pop_logits.unsqueeze(0)).sum(dim=1).mean()
+            loss_total = loss_total + self.disc_weight * loss_disc
+            
+        return loss_total, loss_ce, loss_cl, loss_disc
 
 
 def hard_negative_mining(embeddings, attributes, num_negatives=10):
@@ -112,13 +132,26 @@ def hard_negative_mining(embeddings, attributes, num_negatives=10):
 if __name__ == "__main__":
     # Smoke test
     B, H, Neg = 4, 128, 10
-    loss_fn = ContrastiveLoss(temperature=0.07)
+    config_mock = {
+        "hero": {
+            "contrastive": {"temperature": 0.07, "weight": 0.3},
+            "discovery_weight": 0.5
+        }
+    }
+    loss_fn = MultiObjectiveLoss(config_mock)
+    
+    logits = torch.randn(B, 100)
+    targets = torch.randint(1, 100, (B,))
     anchor = torch.randn(B, H)
     pos = torch.randn(B, H)
     negs = torch.randn(B, Neg, H)
+    pop_logits = torch.randn(100)
     
-    loss = loss_fn(anchor, pos, negs)
-    print("=== ContrastiveLoss Smoke Test ===")
-    print(f"Loss value: {loss.item():.4f}")
-    assert loss.item() > 0
-    print("✓ contrastive forward pass successful")
+    loss_total, loss_ce, loss_cl, loss_disc = loss_fn(logits, targets, anchor, pos, negs, pop_logits)
+    print("=== MultiObjectiveLoss Smoke Test ===")
+    print(f"Total Loss: {loss_total.item():.4f}")
+    print(f"CE Loss: {loss_ce.item():.4f}")
+    print(f"CL Loss: {loss_cl.item():.4f}")
+    print(f"Disc Loss: {loss_disc.item():.4f}")
+    assert loss_total.item() > 0
+    print("✓ multi-objective forward pass successful")

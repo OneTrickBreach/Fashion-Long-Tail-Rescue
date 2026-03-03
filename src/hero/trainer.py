@@ -5,7 +5,7 @@ Team: Ishan, Elizabeth, Nishant
 
 PURPOSE:
     Handles the end-to-end training pipeline for the Hero model,
-    including the combined loss (recommendation + contrastive).
+    including the multi-objective loss (CE + contrastive + discovery).
 """
 
 import os
@@ -15,12 +15,11 @@ import logging
 import torch
 import torch.nn as nn
 import numpy as np
-
 from src.utils.helpers import load_config, set_seed, get_device, setup_logging
 from src.data.dataset import build_dataloaders
 from src.hero.model import HeroModel
-from src.hero.contrastive import CombinedLoss, hard_negative_mining
-from src.utils.metrics import compute_all_metrics
+from src.hero.contrastive import MultiObjectiveLoss, hard_negative_mining
+from src.utils.metrics import compute_all_metrics, popularity_logit_scores
 
 logger = logging.getLogger("seeing-the-unseen")
 
@@ -161,6 +160,31 @@ def train_hero(config: dict) -> dict:
     )
     num_items = meta["num_items"]
     catalog_size = num_items - 1
+    idx_to_id = meta["idx_to_id"]
+    item_sales_counts = meta["item_sales_counts"]
+
+    # ── Phase 3: Popularity Logits Pre-computation ───────────
+    # Reuse sales counts already computed in build_dataloaders (rules.md §6)
+    pop_logit_dict = popularity_logit_scores(item_sales_counts)
+    
+    # Map raw-article-id logits → contiguous-index tensor
+    # Zero-transaction items are NOT in pop_logit_dict. Using 0.0 as fallback
+    # would wrongly treat them as *more* popular than rare items (whose logits
+    # are negative). Instead, default to the minimum logit so unseen items are
+    # treated as the least popular.
+    min_logit = min(pop_logit_dict.values()) if pop_logit_dict else 0.0
+    pop_logits_tensor = torch.full((num_items,), min_logit, dtype=torch.float32)
+    pop_logits_tensor[0] = 0.0  # PAD index — neutral, no penalty
+    for idx, aid in idx_to_id.items():
+        if idx == 0:  # PAD
+            continue
+        pop_logits_tensor[idx] = pop_logit_dict.get(aid, min_logit)
+        
+    pop_logits_tensor = pop_logits_tensor.to(device)
+    logger.info(
+        f"Pre-computed popularity logits for {num_items} items "
+        f"(min={min_logit:.2f}, max={max(pop_logit_dict.values()):.2f})."
+    )
 
     # ── Model ────────────────────────────────────────────────
     logger.info("Initialising HeroModel …")
@@ -183,7 +207,7 @@ def train_hero(config: dict) -> dict:
     checkpoint_every = hero_cfg.get("checkpoint_every", 5)
     patience = hero_cfg.get("patience", 10)
     
-    criterion = CombinedLoss(config).to(device)
+    criterion = MultiObjectiveLoss(config).to(device)
     num_negatives = hero_cfg.get("contrastive", {}).get("hard_negatives", 10)
 
     # ── Checkpoint resume ────────────────────────────────────
@@ -237,6 +261,9 @@ def train_hero(config: dict) -> dict:
         # ── Train one epoch ──────────────────────────────────
         model.train()
         running_loss = 0.0
+        running_ce = 0.0
+        running_cl = 0.0
+        running_disc = 0.0
         n_batches = 0
 
         for batch in train_loader:
@@ -263,7 +290,14 @@ def train_hero(config: dict) -> dict:
             negative_embeds = model.item_emb(batch_neg_indices)
             
             # Compute multi-objective loss
-            loss = criterion(logits, targets, anchor=contrastive_embeds, positive=positive_embeds, negatives=negative_embeds)
+            loss, loss_ce, loss_cl, loss_disc = criterion(
+                logits, 
+                targets, 
+                anchor=contrastive_embeds, 
+                positive=positive_embeds, 
+                negatives=negative_embeds,
+                pop_logits=pop_logits_tensor
+            )
             
             loss.backward()
 
@@ -273,9 +307,15 @@ def train_hero(config: dict) -> dict:
             optimizer.step()
 
             running_loss += loss.item()
+            running_ce += loss_ce.item()
+            running_cl += loss_cl.item()
+            running_disc += loss_disc.item()
             n_batches += 1
 
         avg_train_loss = running_loss / max(n_batches, 1)
+        avg_ce_loss = running_ce / max(n_batches, 1)
+        avg_cl_loss = running_cl / max(n_batches, 1)
+        avg_disc_loss = running_disc / max(n_batches, 1)
 
         # ── Validate ─────────────────────────────────────────
         val_metrics = evaluate(model, val_loader, device, eval_k, catalog_size)
@@ -296,10 +336,16 @@ def train_hero(config: dict) -> dict:
             f"{val_ndcg:>8.4f} | {val_mrr:>8.4f} | {val_cov:>8.4f} | "
             f"{current_lr:>10.6f} | {elapsed:>5.1f}s"
         )
+        logger.debug(
+            f"          └─ Losses — CE: {avg_ce_loss:.4f}, CL: {avg_cl_loss:.4f}, Disc: {avg_disc_loss:.4f}"
+        )
 
         epoch_record = {
             "epoch": epoch + 1,
             "train_loss": avg_train_loss,
+            "train_ce": avg_ce_loss,
+            "train_cl": avg_cl_loss,
+            "train_disc": avg_disc_loss,
             "val_loss": val_loss,
             f"val_ndcg@{eval_k}": val_ndcg,
             "val_mrr": val_mrr,

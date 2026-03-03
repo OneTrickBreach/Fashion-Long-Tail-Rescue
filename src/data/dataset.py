@@ -297,10 +297,14 @@ def build_dataloaders(
         num_workers=0, pin_memory=True,
     )
 
+    # Pre-compute item sales counts for downstream use (popularity logits, etc.)
+    item_sales_counts = txn["article_id"].value_counts().to_dict()
+
     metadata = {
         "id_to_idx": id_to_idx,
         "idx_to_id": idx_to_id,
         "num_items": num_items,
+        "item_sales_counts": item_sales_counts,
     }
 
     logger.info(

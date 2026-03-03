@@ -42,7 +42,7 @@ All hyperparameters and paths come from `config.yaml` (single source of truth pe
 
 ## Task Breakdown
 
-### 1. Config & Infrastructure Setup
+### 1. [DONE] Config & Infrastructure Setup  *(Task Complete)*
 
 | # | Sub-task | Details |
 |---|----------|---------|
@@ -54,7 +54,7 @@ All hyperparameters and paths come from `config.yaml` (single source of truth pe
 
 ---
 
-### 2. Multi-Objective Loss Function — *Ishan's portion*
+### 2. [DONE] Multi-Objective Loss Function — *Ishan's portion*  *(Task Complete)*
 
 > Core Phase 3 deliverable: make the relevance/discovery trade-off tuneable.
 
@@ -282,7 +282,7 @@ Day 4 (March 6):  Task 6 (Pareto visualisation) + Task 7 (pipeline integration)
 
 ## Success Criteria (End of Week 3)
 
-- [ ] `MultiObjectiveLoss` implemented with tuneable `λ_disc` parameter
+- [x] `MultiObjectiveLoss` implemented with tuneable `λ_disc` parameter
 - [ ] Pareto sweep completed for at least 3 λ values (0.0, 0.3, 0.7)
 - [ ] Results saved to `outputs/pareto_sweep_results.json`
 - [ ] Pareto front plot generated at `analytics/pareto/pareto_front.png`
@@ -291,5 +291,76 @@ Day 4 (March 6):  Task 6 (Pareto visualisation) + Task 7 (pipeline integration)
 - [ ] Business conclusion drafted: "By sacrificing X% relevance, we gained Y% discovery"
 - [ ] `run_all.py` updated with Phase 3 stages (ablation, pareto_sweep, pareto_plot)
 - [ ] Decision log updated with Phase 3 design rationale
-- [ ] All code follows `rules.md` (docstrings, config-driven, no hard-coded paths)
+- [x] All code follows `rules.md` (docstrings, config-driven, no hard-coded paths)
 - [ ] Hard-negative mining upgraded from random to attribute-aware (stretch goal)
+
+---
+
+## Progress Journal
+
+### March 3, 2026
+
+#### ✅ Task 1: Config & Infrastructure Setup — DONE
+
+**What was changed:** `config.yaml` updated with all Phase 3 keys:
+- Added `hero.discovery_weight: 0.0` — controls the strength of the discovery-aware loss term. Default `0.0` preserves exact Phase 2 Hero behaviour (regression-safe).
+- Added `pareto` section with `lambda_values: [0.0, 0.3, 0.7, 1.0]`, `metric_x`, `metric_y`, `output_dir`.
+- Verified both `checkpoints/hero_best.pt` (49.7 MB) and `checkpoints/villain_best.pt` (49.0 MB) are present and loadable.
+
+---
+
+#### ✅ Task 2: Multi-Objective Loss Function — DONE
+
+**What was built:** `MultiObjectiveLoss` class in `src/hero/contrastive.py` extending the Phase 2 `CombinedLoss` into a three-term objective:
+
+```
+L_total = L_CE(logits, targets)
+        + λ_CL  * L_contrastive(anchor, pos, negs)       # existing (0.3)
+        + λ_disc * L_discovery(logits, pop_logit_vector)  # NEW
+```
+
+**Discovery loss formulation:**
+- `L_discovery = mean over batch of dot(softmax(logits), pop_logit_vector)`
+- Differentiable w.r.t. logits (smooth softmax, no hard top-K).
+- Penalises placing high softmax mass on items with high popularity logits.
+- `λ_disc = 0` exactly reproduces Phase 2 behaviour (verified via regression test).
+
+**Pre-computed popularity logits:**
+- `build_dataloaders()` now returns `item_sales_counts` in its metadata dict, avoiding a redundant CSV re-read (rules.md §6 compliance).
+- `popularity_logit_scores()` from `metrics.py` computes smoothed logits per item.
+- Mapped to a `(num_items,)` GPU tensor indexed by contiguous item IDs.
+- PAD index 0 set to `0.0` (neutral — no penalty).
+
+**Trainer integration:**
+- `src/hero/trainer.py` now imports `MultiObjectiveLoss` (replaces `CombinedLoss`).
+- All three loss components (`CE`, `CL`, `Disc`) logged separately per epoch.
+- `pop_logits_tensor` pre-computed once and passed to the criterion every batch.
+
+**Smoke test results (λ_disc = 0.5):**
+
+| Component | Value |
+|-----------|-------|
+| Total Loss | 6.62 |
+| CE Loss | 5.46 |
+| CL Loss | 3.74 |
+| Disc Loss | 0.08 |
+
+**Regression test (λ_disc = 0.0):** Confirmed `loss_disc == 0.0` exactly.
+
+---
+
+#### 🔧 Post-Implementation Review — 4 bugs fixed
+
+A brutal review of Tasks 1–2 caught and fixed the following issues:
+
+**Bug 1 — Zero-transaction pop-logit fallback (severity: HIGH)**
+Items with 0 transactions were missing from `pop_logit_dict` and defaulted to `0.0`. But `0.0` is *higher* than most rare items' logits (which are negative), so the discovery loss would treat zero-transaction items as *more popular* than rare items — completely inverted. **Fix:** Default to `min(pop_logit_dict.values())` so unseen items are treated as the least popular.
+
+**Bug 2 — `loss_disc` type inconsistency (severity: MEDIUM)**
+`MultiObjectiveLoss.forward()` returned `float 0.0` when `disc_weight == 0` but `Tensor` when enabled. The trainer had a fragile `isinstance()` check to handle this. **Fix:** Always return `torch.tensor(0.0, device=logits.device)` for a consistent API.
+
+**Bug 3 — Double CSV read (severity: LOW, rules.md §6 violation)**
+`trainer.py` re-read `transactions_sampled.csv` to compute sales counts, even though `build_dataloaders()` already parses it. **Fix:** Added `item_sales_counts` to the metadata dict returned by `build_dataloaders()`, eliminated the redundant `pd.read_csv()` and the `pandas` import from trainer.
+
+**Bug 4 — Stale docstrings (severity: LOW, rules.md §3 violation)**
+`contrastive.py` KEY COMPONENTS section didn't mention `MultiObjectiveLoss`. `trainer.py` docstring still referenced "combined loss (recommendation + contrastive)". **Fix:** Updated both to reflect the new three-term multi-objective loss.

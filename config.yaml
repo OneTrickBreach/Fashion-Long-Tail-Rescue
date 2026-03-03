@@ -61,10 +61,17 @@ hero:
   use_visual: true                  # Enable multimodal visual fusion
   checkpoint_every: 5              # Save checkpoint every N epochs
   patience: 10                     # Early stopping patience
+  discovery_weight: 0.0            # Phase 3: Strength of the discovery-aware loss term
   contrastive:
     temperature: 0.07
     hard_negatives: 10
     weight: 0.3                    # Loss weight for contrastive term
+
+pareto:
+  lambda_values: [0.0, 0.3, 0.7, 1.0]
+  metric_x: "catalog_coverage"
+  metric_y: "ndcg@12"
+  output_dir: "analytics/pareto"
 
 evaluation:
   k: 12                           # nDCG@K, top-K recommendations
