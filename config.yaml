@@ -66,6 +66,13 @@ hero:
     temperature: 0.07
     hard_negatives: 10
     weight: 0.3                    # Loss weight for contrastive term
+    mining_mode: "attribute"       # Phase 3: "random" or "attribute" (Jaccard-based)
+    jaccard_low: 0.3               # Min Jaccard similarity for hard negatives
+    jaccard_high: 0.7              # Max Jaccard similarity for hard negatives
+    attribute_cols:                 # Article attributes used for Jaccard mining
+      - "product_group_name"
+      - "colour_group_name"
+      - "garment_group_name"
 
 pareto:
   lambda_values: [0.0, 0.3, 0.7, 1.0]

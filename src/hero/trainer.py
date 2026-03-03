@@ -162,6 +162,7 @@ def train_hero(config: dict) -> dict:
     catalog_size = num_items - 1
     idx_to_id = meta["idx_to_id"]
     item_sales_counts = meta["item_sales_counts"]
+    item_attributes = meta.get("item_attributes", {})
 
     # ── Phase 3: Popularity Logits Pre-computation ───────────
     # Reuse sales counts already computed in build_dataloaders (rules.md §6)
@@ -208,7 +209,12 @@ def train_hero(config: dict) -> dict:
     patience = hero_cfg.get("patience", 10)
     
     criterion = MultiObjectiveLoss(config).to(device)
-    num_negatives = hero_cfg.get("contrastive", {}).get("hard_negatives", 10)
+    cl_cfg = hero_cfg.get("contrastive", {})
+    num_negatives = cl_cfg.get("hard_negatives", 10)
+    mining_mode = cl_cfg.get("mining_mode", "random")
+    jaccard_low = cl_cfg.get("jaccard_low", 0.3)
+    jaccard_high = cl_cfg.get("jaccard_high", 0.7)
+    hn_cache_path = os.path.join(ckpt_dir, "hard_negatives_cache.pt")
 
     # ── Checkpoint resume ────────────────────────────────────
     latest_path = _checkpoint_path(ckpt_dir, "latest")
@@ -255,8 +261,15 @@ def train_hero(config: dict) -> dict:
         t0 = time.time()
 
         # Pre-compute hard negatives for this epoch
-        # (Using our placeholder randomized mining method for now)
-        hard_negatives = hard_negative_mining(model.item_emb.weight, attributes=None, num_negatives=num_negatives).to(device)
+        hard_negatives = hard_negative_mining(
+            num_items=num_items,
+            num_negatives=num_negatives,
+            item_attributes=item_attributes,
+            mining_mode=mining_mode,
+            jaccard_low=jaccard_low,
+            jaccard_high=jaccard_high,
+            cache_path=hn_cache_path,
+        ).to(device)
 
         # ── Train one epoch ──────────────────────────────────
         model.train()

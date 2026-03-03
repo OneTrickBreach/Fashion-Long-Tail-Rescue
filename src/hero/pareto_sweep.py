@@ -155,7 +155,13 @@ def finetune_and_evaluate(
 
     # ── Loss with this λ_disc ─────────────────────────────────
     criterion = MultiObjectiveLoss(sweep_config).to(device)
-    num_negatives = hero_cfg.get("contrastive", {}).get("hard_negatives", 10)
+    cl_cfg = hero_cfg.get("contrastive", {})
+    num_negatives = cl_cfg.get("hard_negatives", 10)
+    mining_mode = cl_cfg.get("mining_mode", "random")
+    jaccard_low = cl_cfg.get("jaccard_low", 0.3)
+    jaccard_high = cl_cfg.get("jaccard_high", 0.7)
+    item_attributes = meta.get("item_attributes", {})
+    hn_cache_path = os.path.join(ckpt_dir, "hard_negatives_cache.pt")
 
     # ── Fine-tune loop ────────────────────────────────────────
     best_val_ndcg = 0.0
@@ -176,7 +182,13 @@ def finetune_and_evaluate(
 
         # Pre-compute hard negatives
         hard_negatives = hard_negative_mining(
-            model.item_emb.weight, attributes=None, num_negatives=num_negatives
+            num_items=num_items,
+            num_negatives=num_negatives,
+            item_attributes=item_attributes,
+            mining_mode=mining_mode,
+            jaccard_low=jaccard_low,
+            jaccard_high=jaccard_high,
+            cache_path=hn_cache_path,
         ).to(device)
 
         # ── Train one epoch ───────────────────────────────────

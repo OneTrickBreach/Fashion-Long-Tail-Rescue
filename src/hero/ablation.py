@@ -85,7 +85,13 @@ def _train_id_only_hero(
 
     # ── Loss (CE + contrastive, no discovery) ─────────────────
     criterion = MultiObjectiveLoss(ablation_config).to(device)
-    num_negatives = hero_cfg.get("contrastive", {}).get("hard_negatives", 10)
+    cl_cfg = hero_cfg.get("contrastive", {})
+    num_negatives = cl_cfg.get("hard_negatives", 10)
+    mining_mode = cl_cfg.get("mining_mode", "random")
+    jaccard_low = cl_cfg.get("jaccard_low", 0.3)
+    jaccard_high = cl_cfg.get("jaccard_high", 0.7)
+    item_attributes = meta.get("item_attributes", {})
+    hn_cache_path = os.path.join(ckpt_dir, "hard_negatives_cache.pt")
 
     # ── Training config ───────────────────────────────────────
     epochs = hero_cfg.get("epochs", 50)
@@ -142,7 +148,13 @@ def _train_id_only_hero(
         t0 = time.time()
 
         hard_negatives = hard_negative_mining(
-            model.item_emb.weight, attributes=None, num_negatives=num_negatives
+            num_items=num_items,
+            num_negatives=num_negatives,
+            item_attributes=item_attributes,
+            mining_mode=mining_mode,
+            jaccard_low=jaccard_low,
+            jaccard_high=jaccard_high,
+            cache_path=hn_cache_path,
         ).to(device)
 
         # ── Train one epoch ───────────────────────────────────
@@ -395,7 +407,7 @@ def _cold_start_id_only(
     txn = pd.read_csv(txn_path, parse_dates=["t_dat"]).sort_values(["customer_id", "t_dat"])
     user_sequences = {uid: grp["article_id"].tolist() for uid, grp in txn.groupby("customer_id")}
 
-    id_to_idx, idx_to_id = build_id_maps(art_path)
+    id_to_idx, idx_to_id, _ = build_id_maps(art_path)
     num_items = max(id_to_idx.values()) + 1
 
     # Identify training items

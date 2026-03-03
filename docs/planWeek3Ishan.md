@@ -164,7 +164,7 @@ L_discovery:       scalar                  — dot(softmax_probs, pop_logit_vect
 
 ---
 
-### 5. Improved Hard-Negative Mining — *Ishan's portion*
+### 5. [DONE] Improved Hard-Negative Mining — *Ishan's portion*  *(Task Complete)*
 
 > Phase 2 used randomised negatives.  Phase 3 upgrades to attribute-aware mining.
 
@@ -479,3 +479,65 @@ Module-level constant `FINETUNE_EPOCHS = 20` bypassed config.yaml. **Fix:** Adde
 
 **Bug A3 — Double file read in ablation.py (severity: LOW)**
 `hero_cold_start_results.json` was opened and parsed twice. **Fix:** Read once, extract both `hero` and `villain` sections.
+
+---
+
+#### ✅ Task 5: Improved Hard-Negative Mining — DONE
+
+**What was built:** Upgraded `hard_negative_mining()` in `src/hero/contrastive.py` from randomised negatives to attribute-aware Jaccard-based mining.
+
+**5a — Article attribute extraction (no double CSV read):**
+- Extended `build_id_maps()` in `src/data/dataset.py` with an optional `attribute_cols` parameter.
+- Extracts `product_group_name`, `colour_group_name`, `garment_group_name` from `articles_sampled.csv` during the existing CSV read (rules.md §6 — no redundant file I/O).
+- Builds `item_attributes: dict[int, set]` keyed by contiguous item index, values are `{col=value}` strings.
+- Returned as part of `build_dataloaders()` metadata dict (`meta["item_attributes"]`).
+
+**5b — Jaccard-based mining function:**
+- New signature: `hard_negative_mining(num_items, num_negatives, item_attributes, mining_mode, jaccard_low, jaccard_high, cache_path)`.
+- Builds a binary attribute matrix `(num_items, num_attrs)` from `item_attributes`.
+- Computes pairwise Jaccard similarity in chunks of 512 rows to limit peak memory to O(512 × N) instead of O(N²).
+- Jaccard formula: `J(A,B) = |A ∩ B| / |A ∪ B|` via vectorised dot products.
+- Hard negatives = items with Jaccard in `[jaccard_low, jaccard_high]` (partial attribute overlap).
+- Items with fewer valid candidates are backfilled with uniform random sampling.
+- PAD (index 0) and self are excluded via vectorised masking.
+
+**5c — Caching with staleness protection:**
+- Pre-computed `(num_items, num_negatives)` matrix cached to `.pt` file.
+- Cache payload includes `jaccard_low`, `jaccard_high`, `mining_mode` — recomputes automatically if params change between runs.
+- Computation time: **~6.3s** for 26,933 items × 10 negatives; cached reload is instant.
+
+**5d — Integration across all call sites:**
+- `trainer.py`: Reads `mining_mode`, `jaccard_low`, `jaccard_high` from `config.yaml → hero.contrastive.*`.
+- `pareto_sweep.py`: Same integration for fine-tune sweep loop.
+- `ablation.py`: Same integration for ID-only training loop.
+- `evaluate_cold_start.py`: Fixed `build_id_maps()` call for new 3-return-value signature.
+
+**Config keys added to `config.yaml`:**
+```yaml
+hero.contrastive:
+  mining_mode: "attribute"    # "random" or "attribute"
+  jaccard_low: 0.3
+  jaccard_high: 0.7
+  attribute_cols: [product_group_name, colour_group_name, garment_group_name]
+```
+
+**Smoke test results:**
+- MultiObjectiveLoss: Total=6.10, CE=5.16, CL=2.84, Disc=0.17 ✓
+- Random mode: shape (50, 5), all indices valid ✓
+- Attribute mode: shape (50, 5), zero self-negatives ✓
+- Empty attrs fallback to random ✓
+- Full-data test: 26,933 items × 10 negatives in 6.3s ✓
+- Cache hit/miss/staleness detection ✓
+
+---
+
+#### 🔧 Post-Implementation Review — Task 5 (3 bugs fixed)
+
+**Bug T5-1 — Unused variable `valid_indices` (severity: LOW)**
+`valid_indices = torch.arange(1, num_items)` was declared but never referenced. **Fix:** Removed.
+
+**Bug T5-2 — Cache staleness risk (severity: MEDIUM)**
+Original cache only checked tensor shape. If Jaccard params changed between runs, stale negatives would silently load. **Fix:** Cache payload now stores `jaccard_low`, `jaccard_high`, `mining_mode` alongside the matrix; loader validates all params match before returning cached data.
+
+**Bug T5-3 — Per-row masking loop (severity: LOW, performance)**
+Self and PAD exclusion used a Python `for` loop over chunk rows. **Fix:** Vectorised with `jaccard[:, 0] = -1.0` and diagonal indexing `jaccard[diag_indices, diag_indices + start] = -1.0`.

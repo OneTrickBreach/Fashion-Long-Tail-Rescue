@@ -40,16 +40,27 @@ PAD_IDX = 0
 # ID mapping
 # ──────────────────────────────────────────────────────────────
 
-def build_id_maps(articles_path: str) -> tuple[dict, dict]:
+def build_id_maps(
+    articles_path: str,
+    attribute_cols: list[str] | None = None,
+) -> tuple[dict, dict, dict]:
     """
     Build bidirectional mappings between raw article_id and
     contiguous 0-based indices.  Index 0 is reserved for PAD.
 
+    Optionally extracts per-item attribute sets for hard-negative mining,
+    avoiding a redundant CSV re-read downstream (rules.md §6).
+
     Args:
-        articles_path: Path to articles_sampled.csv.
+        articles_path:  Path to articles_sampled.csv.
+        attribute_cols:  Column names to extract as attribute sets.
+                         If None, item_attributes will be empty.
 
     Returns:
-        (id_to_idx, idx_to_id) — both are plain dicts.
+        (id_to_idx, idx_to_id, item_attributes)
+        - id_to_idx / idx_to_id: bidirectional dicts.
+        - item_attributes: {contiguous_idx: set(attribute_values)} for
+          every item index ≥ 1.  Index 0 (PAD) is omitted.
     """
     articles = pd.read_csv(articles_path)
     unique_ids = sorted(articles["article_id"].unique())
@@ -58,7 +69,31 @@ def build_id_maps(articles_path: str) -> tuple[dict, dict]:
     idx_to_id = {v: k for k, v in id_to_idx.items()}
     idx_to_id[PAD_IDX] = -1  # sentinel for PAD
     logger.info(f"ID map built: {len(unique_ids)} articles → indices 1..{len(unique_ids)}")
-    return id_to_idx, idx_to_id
+
+    # ── Extract per-item attribute sets (Phase 3 Task 5) ──────
+    item_attributes: dict[int, set] = {}
+    if attribute_cols:
+        valid_cols = [c for c in attribute_cols if c in articles.columns]
+        if valid_cols:
+            articles_indexed = articles.set_index("article_id")
+            for aid, idx in id_to_idx.items():
+                if aid in articles_indexed.index:
+                    row = articles_indexed.loc[aid]
+                    attrs = set()
+                    for col in valid_cols:
+                        val = row[col] if not isinstance(row, pd.DataFrame) else row.iloc[0][col]
+                        if pd.notna(val):
+                            attrs.add(f"{col}={val}")
+                    item_attributes[idx] = attrs
+                else:
+                    item_attributes[idx] = set()
+            logger.info(
+                f"Extracted {len(valid_cols)} attribute cols for {len(item_attributes)} items "
+                f"(cols: {valid_cols})"
+            )
+        else:
+            logger.warning(f"None of {attribute_cols} found in articles CSV.")
+    return id_to_idx, idx_to_id, item_attributes
 
 
 def load_multimodal_embeddings(
@@ -244,8 +279,11 @@ def build_dataloaders(
     txn_path = os.path.join(sampled_dir, "transactions_sampled.csv")
     art_path = os.path.join(sampled_dir, "articles_sampled.csv")
 
-    # ── Build ID maps ────────────────────────────────────────
-    id_to_idx, idx_to_id = build_id_maps(art_path)
+    # ── Build ID maps + article attributes ─────────────────
+    attribute_cols = config.get("hero", {}).get("contrastive", {}).get("attribute_cols", None)
+    id_to_idx, idx_to_id, item_attributes = build_id_maps(
+        art_path, attribute_cols=attribute_cols,
+    )
     num_items = max(id_to_idx.values()) + 1  # includes PAD at 0
 
     # ── Build per-user chronological sequences ───────────────
@@ -305,6 +343,7 @@ def build_dataloaders(
         "idx_to_id": idx_to_id,
         "num_items": num_items,
         "item_sales_counts": item_sales_counts,
+        "item_attributes": item_attributes,
     }
 
     logger.info(

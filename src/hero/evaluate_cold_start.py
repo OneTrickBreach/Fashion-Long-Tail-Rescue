@@ -43,7 +43,7 @@ def run_cold_start_simulation(config):
     txn = pd.read_csv(txn_path, parse_dates=["t_dat"]).sort_values(["customer_id", "t_dat"])
     user_sequences = {uid: grp["article_id"].tolist() for uid, grp in txn.groupby("customer_id")}
     
-    id_to_idx, idx_to_id = build_id_maps(art_path)
+    id_to_idx, idx_to_id, _ = build_id_maps(art_path)
     num_items = max(id_to_idx.values()) + 1
     
     # Identify items in training vs test
