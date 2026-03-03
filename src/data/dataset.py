@@ -328,6 +328,9 @@ if __name__ == "__main__":
     batch = next(iter(train_ld))
     print("\n=== Smoke Test: first train batch ===")
     for k, v in batch.items():
-        print(f"  {k}: shape={v.shape}, dtype={v.dtype}")
+        if hasattr(v, "shape"):
+            print(f"  {k}: shape={v.shape}, dtype={v.dtype}")
+        else:
+            print(f"  {k}: type={type(v).__name__}, len={len(v)}")
     print(f"  num_items: {meta['num_items']}")
     print("  ✓ DataLoader smoke test passed")
