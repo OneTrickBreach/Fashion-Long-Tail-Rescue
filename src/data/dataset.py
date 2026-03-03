@@ -19,6 +19,8 @@ NOTES:
     - Sequences are right-padded to `max_seq_len` with a dedicated PAD
       token (index 0).
     - Uses `config.yaml` paths to locate sampled CSVs.
+
+P.S From Nishant: Small edit added to include uid in the return dictionary data
 """
 
 import os
@@ -165,11 +167,11 @@ class TransactionDataset(Dataset):
             if self.mode == "test":
                 inp = idx_seq[:-1]
                 tgt = idx_seq[-1]
-                samples.append((inp, tgt))
+                samples.append((inp, tgt, uid))
             elif self.mode == "val":
                 inp = idx_seq[:-2]
                 tgt = idx_seq[-2]
-                samples.append((inp, tgt))
+                samples.append((inp, tgt, uid))
             else:  # train — sliding window over the prefix
                 # For each position t (2 <= t <= len-2), predict item[t]
                 prefix = idx_seq[:-2]  # exclude val & test items
@@ -185,7 +187,7 @@ class TransactionDataset(Dataset):
         return len(self.samples)
 
     def __getitem__(self, index: int) -> dict:
-        inp, tgt = self.samples[index]
+        inp, tgt, uid = self.samples[index]
 
         # Truncate to max_seq_len (keep the most recent items)
         if len(inp) > self.max_seq_len:
@@ -205,6 +207,7 @@ class TransactionDataset(Dataset):
             "positions": positions,
             "target": target,
             "seq_len": torch.tensor(seq_len, dtype=torch.long),
+            "customer_id": uid,
         }
 
         if self.visual_embeddings is not None:
