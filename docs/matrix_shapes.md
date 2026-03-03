@@ -130,15 +130,15 @@ positions (B, S) ──► nn.Embedding(S, D) ──► pos_emb (B, S, D)
 
 | Stage | Tensor | Shape | Notes |
 |-------|--------|-------|-------|
-| Text embedding | `text_emb` | `(B, S, D_hero)` | `(256, 50, 128)` — ID + Positional embeddings |
-| Visual embedding | `vis_emb` | `(B, S, 2048)` | `(256, 50, 2048)` — From pre-computed ResNet50 |
-| Projection layer | `vis_proj` | `(B, S, D_hero)` | `(256, 50, 128)` — Linear(2048, 128) |
-| Fused input | `fused` | `(B, S, D_hero)` | `(256, 50, 128)` — text_emb + vis_proj + LayerNorm |
-| BST encoder output | `bst_out` | `(B, S, D_hero)` | `(256, 50, 128)` — 3-layer, 4-head |
-| Pooled representation | `user_repr` | `(B, D_hero)` | `(256, 128)` — Last valid hidden state |
-| Prediction logits | `logits` | `(B, V)` | `(256, 26933)` — Dot product with item embeddings + visual embeddings |
-| Contrastive anchor | `anchor` | `(B, D_hero)` | `(256, 128)` — User representation |
-| Contrastive positive | `positive` | `(B, D_hero)` | `(256, 128)` — Target item embed + target visual embed |
+| Text embedding | `text_emb` | `(B, S, D_hero)` | `(128, 50, 128)` — ID + Positional embeddings |
+| Visual embedding | `vis_emb` | `(B, S, 2048)` | `(128, 50, 2048)` — From pre-computed ResNet50 |
+| Projection layer | `vis_proj` | `(B, S, D_hero)` | `(128, 50, 128)` — Linear(2048, 128) |
+| Fused input | `fused` | `(B, S, D_hero)` | `(128, 50, 128)` — text_emb + vis_proj + LayerNorm |
+| BST encoder output | `bst_out` | `(B, S, D_hero)` | `(128, 50, 128)` — 3-layer, 4-head |
+| Pooled representation | `user_repr` | `(B, D_hero)` | `(128, 128)` — Last valid hidden state |
+| Prediction logits | `logits` | `(B, V)` | `(128, 26933)` — Dot product with item embeddings + visual embeddings |
+| Contrastive anchor | `anchor` | `(B, D_hero)` | `(128, 128)` — User representation |
+| Contrastive positive | `positive` | `(B, D_hero)` | `(128, 128)` — Target item embed + target visual embed |
 | Contrastive negatives | `negatives` | `(N, D_hero)` | `(num_negatives, 128)` — Hard negatives drawn per epoch |
 
 **Config:** `batch_size=256` · `max_seq_len=50` · `hidden_dim=128` · `num_heads=4` · `num_layers=3`
@@ -149,10 +149,10 @@ positions (B, S) ──► nn.Embedding(S, D) ──► pos_emb (B, S, D)
 
 | Tensor | Shape | Notes |
 |--------|-------|-------|
-| `text_emb` | `(256, 50, 128)` | ID embedding + positional embedding |
-| `vis_raw` | `(256, 50, 2048)` | Raw ResNet50 output (Elizabeth's pipeline) |
-| `vis_proj` | `(256, 50, 128)` | Linear(2048 → 128) projection of visual features |
-| `fused` | `(256, 50, 128)` | `text_emb + vis_proj + LayerNorm` — output of Layer 1 |
+| `text_emb` | `(128, 50, 128)` | ID embedding + positional embedding |
+| `vis_raw` | `(128, 50, 2048)` | Raw ResNet50 output (Elizabeth's pipeline) |
+| `vis_proj` | `(128, 50, 128)` | Linear(2048 → 128) projection of visual features |
+| `fused` | `(128, 50, 128)` | `text_emb + vis_proj + LayerNorm` — output of Layer 1 |
 
 ---
 
@@ -160,10 +160,10 @@ positions (B, S) ──► nn.Embedding(S, D) ──► pos_emb (B, S, D)
 
 | Tensor | Shape | Notes |
 |--------|-------|-------|
-| `fused` | `(256, 50, 128)` | Input from Layer 1 |
-| `pos_embed` | `(256, 50, 128)` | Learnable position table `nn.Embedding(50, 128)` |
-| `time_embed` | `(256, 50, 128)` | Time-gap encoding — days since purchase |
-| `X` | `(256, 50, 128)` | `fused + pos_embed + time_embed` — input to transformer |
+| `fused` | `(128, 50, 128)` | Input from Layer 1 |
+| `pos_embed` | `(128, 50, 128)` | Learnable position table `nn.Embedding(50, 128)` |
+| `time_embed` | `(128, 50, 128)` | Time-gap encoding — days since purchase |
+| `X` | `(128, 50, 128)` | `fused + pos_embed + time_embed` — input to transformer |
 
 ---
 
@@ -175,13 +175,13 @@ positions (B, S) ──► nn.Embedding(S, D) ──► pos_emb (B, S, D)
 
 | Tensor | Shape | Notes |
 |--------|-------|-------|
-| `X` | `(256, 50, 128)` | Input sequence |
+| `X` | `(128, 50, 128)` | Input sequence |
 | `W_Q` | `(128, 128)` | Learned query weight matrix |
 | `W_K` | `(128, 128)` | Learned key weight matrix |
 | `W_V` | `(128, 128)` | Learned value weight matrix |
-| `Q` | `(256, 4, 50, 32)` | `X @ W_Q` split into 4 heads · `head_dim = 128 ÷ 4 = 32` |
-| `K` | `(256, 4, 50, 32)` | `X @ W_K` split into 4 heads |
-| `V` | `(256, 4, 50, 32)` | `X @ W_V` split into 4 heads |
+| `Q` | `(128, 4, 50, 32)` | `X @ W_Q` split into 4 heads · `head_dim = 128 ÷ 4 = 32` |
+| `K` | `(128, 4, 50, 32)` | `X @ W_K` split into 4 heads |
+| `V` | `(128, 4, 50, 32)` | `X @ W_V` split into 4 heads |
 
 ---
 
@@ -189,9 +189,9 @@ positions (B, S) ──► nn.Embedding(S, D) ──► pos_emb (B, S, D)
 
 | Tensor | Shape | Notes |
 |--------|-------|-------|
-| `Q` | `(256, 4, 50, 32)` | From Layer 3 |
-| `Kᵀ` | `(256, 4, 32, 50)` | K transposed on last two dims |
-| `scores` | `(256, 4, 50, 50)` | `Q @ Kᵀ / √32` · scale factor `√32 ≈ 5.66` |
+| `Q` | `(128, 4, 50, 32)` | From Layer 3 |
+| `Kᵀ` | `(128, 4, 32, 50)` | K transposed on last two dims |
+| `scores` | `(128, 4, 50, 50)` | `Q @ Kᵀ / √32` · scale factor `√32 ≈ 5.66` |
 
 > Causal mask applied — item `i` cannot attend to items after position `i`.
 
@@ -201,8 +201,8 @@ positions (B, S) ──► nn.Embedding(S, D) ──► pos_emb (B, S, D)
 
 | Tensor | Shape | Notes |
 |--------|-------|-------|
-| `scores` | `(256, 4, 50, 50)` | Input from Layer 4 |
-| `attn_weights` | `(256, 4, 50, 50)` | `softmax(scores, dim=-1)` · each row sums to 1.0 |
+| `scores` | `(128, 4, 50, 50)` | Input from Layer 4 |
+| `attn_weights` | `(128, 4, 50, 50)` | `softmax(scores, dim=-1)` · each row sums to 1.0 |
 
 > `dropout=0.1` applied to attention weights during training.
 
@@ -212,10 +212,10 @@ positions (B, S) ──► nn.Embedding(S, D) ──► pos_emb (B, S, D)
 
 | Tensor | Shape | Notes |
 |--------|-------|-------|
-| `attn_weights` | `(256, 4, 50, 50)` | From Layer 5 |
-| `V` | `(256, 4, 50, 32)` | From Layer 3 |
-| `context` | `(256, 4, 50, 32)` | `attn_weights @ V` per head |
-| `context` | `(256, 50, 128)` | Concat 4 heads · `4 × 32 = 128` |
+| `attn_weights` | `(128, 4, 50, 50)` | From Layer 5 |
+| `V` | `(128, 4, 50, 32)` | From Layer 3 |
+| `context` | `(128, 4, 50, 32)` | `attn_weights @ V` per head |
+| `context` | `(128, 50, 128)` | Concat 4 heads · `4 × 32 = 128` |
 
 ---
 
@@ -223,10 +223,10 @@ positions (B, S) ──► nn.Embedding(S, D) ──► pos_emb (B, S, D)
 
 | Tensor | Shape | Notes |
 |--------|-------|-------|
-| `context` | `(256, 50, 128)` | From Layer 6 |
+| `context` | `(128, 50, 128)` | From Layer 6 |
 | `W_O` | `(128, 128)` | Learned output projection matrix |
-| `X` | `(256, 50, 128)` | Residual — same X that entered Layer 3 |
-| `hidden_state` | `(256, 50, 128)` | `LayerNorm(context @ W_O + X)` — output of block |
+| `X` | `(128, 50, 128)` | Residual — same X that entered Layer 3 |
+| `hidden_state` | `(128, 50, 128)` | `LayerNorm(context @ W_O + X)` — output of block |
 
 > `hidden_state` becomes the new `X` for the next transformer block.
 
@@ -236,8 +236,8 @@ positions (B, S) ──► nn.Embedding(S, D) ──► pos_emb (B, S, D)
 
 | Tensor | Shape | Notes |
 |--------|-------|-------|
-| `transformer_out` | `(256, 50, 128)` | Output of Block 3 (final transformer block) |
-| `user_repr` | `(256, 128)` | `transformer_out[:, -1, :]` — last valid hidden state |
+| `transformer_out` | `(128, 50, 128)` | Output of Block 3 (final transformer block) |
+| `user_repr` | `(128, 128)` | `transformer_out[:, -1, :]` — last valid hidden state |
 
 ---
 
@@ -245,9 +245,9 @@ positions (B, S) ──► nn.Embedding(S, D) ──► pos_emb (B, S, D)
 
 | Tensor | Shape | Notes |
 |--------|-------|-------|
-| `user_repr` | `(256, 128)` | From Layer 8 |
+| `user_repr` | `(128, 128)` | From Layer 8 |
 | `item_embeddings` | `(26933, 128)` | Full item bank — one 128-dim row per article |
-| `logits` | `(256, 26933)` | `user_repr @ item_embeddings.T` — one score per item per user |
+| `logits` | `(128, 26933)` | `user_repr @ item_embeddings.T` — one score per item per user |
 
 ---
 
