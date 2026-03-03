@@ -47,35 +47,46 @@ def main():
 
     # Stage 1: Data Sampling
     if args.stage in ("all", "sample") and not args.skip_sampling:
-        logger.info("[1/5] Sampling data...")
+        logger.info("[1/6] Sampling data...")
         from src.data.sampler import create_sample
         create_sample(config)
 
-    # Stage 2: Visual Embedding Extraction
+    # Stage 2: Visual Embedding Extraction + Multimodal Fusion
     if args.stage in ("all", "embed"):
-        logger.info("[2/5] Extracting visual embeddings...")
-        # Phase 2: from src.data.embeddings import extract_embeddings
-        # extract_embeddings(config)
-        logger.info("  (skipped — Phase 2 feature)")
+        logger.info("[2/6] Extracting visual embeddings...")
+        from src.data.extract_visual_embeddings import extract_all
+        extract_all(config)
+
+        logger.info("[2/6] Fusing multimodal embeddings...")
+        from src.data.fuse_multimodal_embeddings import fuse_all
+        fuse_all(config)
 
     # Stage 3: Train Villain (Baseline)
     if args.stage in ("all", "train_villain"):
-        logger.info("[3/5] Training the Villain (baseline)...")
+        logger.info("[3/6] Training the Villain (baseline)...")
         from src.villain.trainer import train_villain
         train_villain(config)
 
     # Stage 4: Train Hero (Main Model)
     if args.stage in ("all", "train_hero"):
-        logger.info("[4/5] Training the Hero (main model)...")
-        # Phase 2: from src.hero.trainer import train_hero
-        # train_hero(config)
-        logger.info("  (skipped — Phase 2 feature)")
+        logger.info("[4/6] Training the Hero (main model)...")
+        from src.hero.trainer import train_hero
+        train_hero(config)
 
     # Stage 5: Evaluate Both Models
     if args.stage in ("all", "evaluate"):
-        logger.info("[5/5] Evaluating both models...")
+        logger.info("[5/6] Evaluating both models...")
         from src.villain.evaluate import evaluate_villain
         evaluate_villain(config)
+
+        from src.hero.evaluate import evaluate_hero
+        evaluate_hero(config)
+
+    # Stage 6: Cold-Start Analysis
+    if args.stage in ("all", "evaluate"):
+        logger.info("[6/6] Running cold-start analysis...")
+        from src.hero.evaluate_cold_start import run_cold_start_simulation
+        run_cold_start_simulation(config)
 
     logger.info("Pipeline complete.")
 

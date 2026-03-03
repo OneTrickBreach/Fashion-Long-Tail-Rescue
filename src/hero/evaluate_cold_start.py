@@ -90,24 +90,26 @@ def run_cold_start_simulation(config):
     villain_ranks = []
     hero_ranks = []
     qualitative_examples = []
-    
+    # Track ALL rank improvements so we can surface the best rescues
+    all_rank_deltas = []
+
     with torch.no_grad():
         # Inject visuals into the catalog prediction matrix!
-        hero_catalog_vis = hero.visual_proj(visual_embeddings) 
+        hero_catalog_vis = hero.visual_proj(visual_embeddings)
         hero_full_catalog = hero.item_emb.weight + hero_catalog_vis
-        
+
         for idx, (uid, seq, target_idx) in enumerate(eval_samples):
             # Prep inputs
             # Map raw IDs to indices, truncate to max_seq_len, pad
             idx_seq = [id_to_idx[a] for a in seq if a in id_to_idx][-config["hero"]["max_seq_len"]:]
             slen = len(idx_seq)
             padded = idx_seq + [0] * (config["hero"]["max_seq_len"] - slen)
-            
+
             item_seq = torch.tensor([padded], dtype=torch.long).to(device)
             positions = torch.arange(config["hero"]["max_seq_len"], dtype=torch.long).unsqueeze(0).to(device)
             seq_len_t = torch.tensor([slen], dtype=torch.long).to(device)
             vis_seq = visual_embeddings[item_seq]
-            
+
             # Villain Prediction
             v_logits = villain(item_seq, positions, seq_len_t) # (1, num_items)
             v_logits[0, 0] = float("-inf")
@@ -116,16 +118,26 @@ def run_cold_start_simulation(config):
             v_sorted = torch.argsort(v_logits[0], descending=True)
             v_rank = (v_sorted == target_idx).nonzero(as_tuple=True)[0].item() + 1
             villain_ranks.append(v_rank)
-            
+
             # Hero Prediction
             _, h_states = hero(item_seq, positions, vis_seq) # h_states: (1, H)
             h_logits = torch.matmul(h_states, hero_full_catalog.transpose(0, 1)) # (1, num_items)
             h_logits[0, 0] = float("-inf")
-            
+
             h_sorted = torch.argsort(h_logits[0], descending=True)
             h_rank = (h_sorted == target_idx).nonzero(as_tuple=True)[0].item() + 1
             hero_ranks.append(h_rank)
-            
+
+            # Record rank improvement (positive = Hero did better)
+            rank_delta = v_rank - h_rank
+            all_rank_deltas.append({
+                "customer_id": uid,
+                "target_article_id": idx_to_id[target_idx],
+                "hero_rank": h_rank,
+                "villain_rank": v_rank,
+                "rank_improvement": rank_delta,
+            })
+
             # Save qualitative highlight if Hero massively outperformed Villain
             if h_rank <= 12 and v_rank > 500:
                 qualitative_examples.append({
@@ -134,6 +146,12 @@ def run_cold_start_simulation(config):
                     "hero_rank": h_rank,
                     "villain_rank": v_rank
                 })
+
+    # If strict criteria found nothing, surface the top-5 biggest rank rescues
+    if not qualitative_examples and all_rank_deltas:
+        sorted_deltas = sorted(all_rank_deltas, key=lambda x: x["rank_improvement"], reverse=True)
+        qualitative_examples = sorted_deltas[:5]
+        print(f"  (No strict h_rank<=12 & v_rank>500 found; showing top-5 biggest rank improvements instead.)")
                 
     # Metrics
     v_ranks = np.array(villain_ranks)

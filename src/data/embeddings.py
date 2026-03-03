@@ -1,47 +1,48 @@
 """
-embeddings.py — ResNet50 Visual Feature Extraction Pipeline
-=============================================================
+embeddings.py — Convenience wrappers for visual & multimodal embeddings
+========================================================================
 Team: Ishan, Elizabeth, Nishant
 
 PURPOSE:
-    Pre-computes 2048-dim visual embeddings for all product images using a
-    pre-trained ResNet50 backbone. Embeddings are saved to disk so the Hero
-    model can load them as a lookup table instead of running CNN inference
-    during every training epoch.
+    Thin delegation layer that forwards to the concrete implementations:
+        - ``src.data.extract_visual_embeddings.extract_all``
+        - ``src.data.fuse_multimodal_embeddings.fuse_all``
+        - ``src.data.dataset.load_multimodal_embeddings``
 
-KEY FUNCTIONS (to implement):
-    - extract_embeddings():   Iterate over product images in batches, run
-                              through ResNet50 (with final FC layer removed),
-                              and save the output tensor to `data/embeddings/`.
-    - load_embeddings():      Memory-map the saved .npy file for efficient
-                              random access during training.
-
-OUTPUT:
-    - data/embeddings/article_embeddings.npy  → (num_articles, 2048) float32
-    - data/embeddings/article_id_map.json     → row index → article_id mapping
+    These wrappers exist so that ``run_all.py`` and other scripts can
+    import from a single module if desired.
 """
 
-import torch
 
-
-def extract_embeddings(config):
+def extract_embeddings(config: dict) -> None:
     """
-    Extract ResNet50 embeddings for all product images and save to disk.
+    Extract ResNet50 visual embeddings for all product images, then
+    fuse with categorical metadata.  Delegates to the standalone scripts.
 
     Args:
-        config (dict): Parsed config.yaml.
+        config: Parsed config.yaml dict.
     """
-    raise NotImplementedError("TODO: Implement ResNet50 embedding extraction")
+    from src.data.extract_visual_embeddings import extract_all
+    from src.data.fuse_multimodal_embeddings import fuse_all
+
+    extract_all(config)
+    fuse_all(config)
 
 
-def load_embeddings(config):
+def load_embeddings(embeddings_path: str, id_to_idx: dict, num_items: int):
     """
-    Load pre-computed embeddings as a memory-mapped numpy array.
+    Load pre-computed multimodal embeddings aligned with the ID map.
+
+    Delegates to ``src.data.dataset.load_multimodal_embeddings``.
 
     Args:
-        config (dict): Parsed config.yaml.
+        embeddings_path: Path to multimodal_embeddings.pt.
+        id_to_idx:       Raw article_id → contiguous index mapping.
+        num_items:       Total vocabulary size (includes PAD at 0).
 
     Returns:
-        tuple: (embeddings_array, id_to_index_map)
+        torch.Tensor of shape (num_items, fused_dim).
     """
-    raise NotImplementedError("TODO: Implement embedding loading")
+    from src.data.dataset import load_multimodal_embeddings
+
+    return load_multimodal_embeddings(embeddings_path, id_to_idx, num_items)
