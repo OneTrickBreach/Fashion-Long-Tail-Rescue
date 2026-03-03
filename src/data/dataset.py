@@ -165,18 +165,18 @@ class TransactionDataset(Dataset):
             if self.mode == "test":
                 inp = idx_seq[:-1]
                 tgt = idx_seq[-1]
-                samples.append((inp, tgt))
+                samples.append((inp, tgt, uid))
             elif self.mode == "val":
                 inp = idx_seq[:-2]
                 tgt = idx_seq[-2]
-                samples.append((inp, tgt))
+                samples.append((inp, tgt, uid))
             else:  # train — sliding window over the prefix
                 # For each position t (2 <= t <= len-2), predict item[t]
                 prefix = idx_seq[:-2]  # exclude val & test items
                 for t in range(1, len(prefix)):
                     inp = prefix[:t]
                     tgt = prefix[t]
-                    samples.append((inp, tgt))
+                    samples.append((inp, tgt, uid))
         return samples
 
     # ── PyTorch interface ────────────────────────────────────
@@ -185,7 +185,7 @@ class TransactionDataset(Dataset):
         return len(self.samples)
 
     def __getitem__(self, index: int) -> dict:
-        inp, tgt = self.samples[index]
+        inp, tgt, uid = self.samples[index]
 
         # Truncate to max_seq_len (keep the most recent items)
         if len(inp) > self.max_seq_len:
@@ -205,6 +205,7 @@ class TransactionDataset(Dataset):
             "positions": positions,
             "target": target,
             "seq_len": torch.tensor(seq_len, dtype=torch.long),
+            "customer_id": uid,
         }
 
         if self.visual_embeddings is not None:
@@ -327,6 +328,9 @@ if __name__ == "__main__":
     batch = next(iter(train_ld))
     print("\n=== Smoke Test: first train batch ===")
     for k, v in batch.items():
-        print(f"  {k}: shape={v.shape}, dtype={v.dtype}")
+        if hasattr(v, "shape"):
+            print(f"  {k}: shape={v.shape}, dtype={v.dtype}")
+        else:
+            print(f"  {k}: type={type(v).__name__}, len={len(v)}")
     print(f"  num_items: {meta['num_items']}")
     print("  ✓ DataLoader smoke test passed")

@@ -55,8 +55,12 @@ hero:
   num_layers: 3
   dropout: 0.1
   lr: 0.0005
+  weight_decay: 0.01               # AdamW L2 regularisation
   epochs: 50
   batch_size: 128
+  use_visual: true                  # Enable multimodal visual fusion
+  checkpoint_every: 5              # Save checkpoint every N epochs
+  patience: 10                     # Early stopping patience
   contrastive:
     temperature: 0.07
     hard_negatives: 10

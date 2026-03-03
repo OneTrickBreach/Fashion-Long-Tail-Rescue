@@ -1,14 +1,14 @@
 # Seeing the Unseen: Multi-Objective Rescue of the Fashion Long Tail
-### CS7180 — Applied Deep Learning | Spring 2026 *(title pending confirmation)*
+### CS7180 — Applied Deep Learning | Spring 2026
 
 ---
 
 ## Team
-| Member    | Role |
-|-----------|------|
-| **Ishan**     | TBD  |
-| **Elizabeth**  | TBD  |
-| **Nishant**   | TBD  |
+| Member | Role |
+|--------|------|
+| **Ishan Biswas** | Transformer Architect & Loss Tuning (PyTorch, Local GPU) |
+| **Elizabeth Coquillette** | Custom Baseline & Visual Features (Pandas, ResNet50) |
+| **Nishant Suresh** | Evaluation Dashboard & Presentation Visuals (Matplotlib, Plotly) |
 
 ---
 
@@ -20,6 +20,33 @@ We compare a text-only sequential baseline (the **"Villain"**) against a multimo
 Behavior Sequence Transformer with an Attribute-Aware Contrastive Learning head
 (the **"Hero"**), and evaluate both on a multi-objective metric suite.
 
+### The Narrative
+1. **The Villain** — A position-aware SASRec baseline that is *intentionally blind* to product images and amplifies popularity bias via a learnable `pop_bias` vector. It buries the long tail.
+2. **The Hero** — A Behavior Sequence Transformer (BST) fusing item-ID embeddings with ResNet50 visual embeddings, trained with a combined Cross-Entropy + InfoNCE contrastive loss. It rescues the long tail by learning visual similarity patterns.
+3. **The Brain** *(Phase 3)* — A multi-objective re-ranker balancing relevance (nDCG) against catalog discovery (coverage).
+
+---
+
+## Progress
+
+| Phase | Description | Status |
+|-------|-------------|--------|
+| **Phase 1** | Data Engineering & Custom Baseline (Villain) | ✅ Complete |
+| **Phase 2** | The "Hero" Model — Style & Sequential Intent | ✅ Complete |
+| **Phase 3** | Multi-Objective Pareto Study | 🔲 In Progress |
+| **Phase 4** | Final Submission & Presentation | 🔲 Pending |
+
+### Key Results (Phase 2)
+
+| Metric | Villain | Hero | Target |
+|--------|---------|------|--------|
+| **Tail-item recommendation rate** | 2.2% | **10.98%** | ≥ 8% |
+| **nDCG@12** | 0.145 | — | — |
+| **Cold-start rank improvement** | — | ~6,000 ranks higher | Hero >> Villain |
+
+The Hero model shifted completely unseen (cold-start) items ~6,000 ranks higher than
+the Villain, and boosted tail-item recommendations from 2.2% to 10.98%.
+
 ---
 
 ## Directory Structure
@@ -28,71 +55,69 @@ Behavior Sequence Transformer with an Attribute-Aware Contrastive Learning head
 ADLProject1/
 │
 ├── README.md                         # ← You are here
-├── run_all.py                        # Master script: data → train → evaluate → report
+├── run_all.py                        # Master script: sample → embed → train → evaluate
 ├── requirements.txt                  # Pip-installable dependencies
-├── config.yaml                       # Central hyper-parameters & paths
-├── .gitignore                        # Ignore large data files, .venv, checkpoints
+├── config.yaml                       # Central hyper-parameters & paths (single source of truth)
+├── plan.md                           # Project plan & task distribution
+├── .gitignore
 │
 ├── data/
-│   ├── raw/                          # Symlinks / pointers to the H&M CSVs
-│   │   └── README.md
-│   ├── sampled/                      # Memory-friendly subsets for local dev
-│   │   └── README.md
-│   └── embeddings/                   # Pre-computed ResNet50 visual embeddings
-│       └── README.md
+│   ├── embeddings/                   # Pre-computed visual & multimodal embeddings
+│   │   └── raw/
+│   │       └── README.md
+│   └── sampled/                      # Memory-friendly subsets for local dev
 │
 ├── src/
 │   ├── __init__.py
 │   ├── data/                         # Data loading, sampling, embedding extraction
 │   │   ├── __init__.py
-│   │   ├── dataset.py                # PyTorch Dataset / DataLoader definitions
-│   │   ├── sampler.py                # Stratified long-tail sampler
-│   │   └── embeddings.py             # ResNet50 feature extraction pipeline
+│   │   ├── dataset.py                # PyTorch Dataset & DataLoaders (leave-one-out split)
+│   │   ├── sampler.py                # Stratified long-tail sampler + int32 conversion
+│   │   ├── embeddings.py             # Convenience wrappers for embedding pipelines
+│   │   ├── extract_visual_embeddings.py  # ResNet50 visual feature extraction
+│   │   └── fuse_multimodal_embeddings.py # Visual + metadata → fused embeddings
 │   │
-│   ├── villain/                      # Baseline: position-aware sequential model
+│   ├── villain/                      # Baseline: position-aware sequential model (text-only)
 │   │   ├── __init__.py
-│   │   ├── model.py                  # SASRec / ELO-ranking backbone (text-only)
-│   │   ├── trainer.py                # Training loop for the villain
-│   │   └── config.py                 # Villain-specific hyperparameters
+│   │   ├── model.py                  # SASRec + learnable pop_bias vector
+│   │   ├── trainer.py                # Training loop with checkpoint resume & early stopping
+│   │   ├── evaluate.py               # Standalone evaluation with per-bucket breakdown
+│   │   └── config.py                 # Villain-specific hyperparameter defaults
 │   │
 │   ├── hero/                         # Main model: multimodal BST + contrastive head
 │   │   ├── __init__.py
-│   │   ├── model.py                  # BST encoder + Attribute-Aware CL head
-│   │   ├── trainer.py                # Training loop for the hero
-│   │   ├── contrastive.py            # Contrastive loss & hard-negative mining
-│   │   └── config.py                 # Hero-specific hyperparameters
+│   │   ├── model.py                  # BST encoder with VisualProjection fusion
+│   │   ├── trainer.py                # Training loop (CE + InfoNCE combined loss)
+│   │   ├── evaluate.py               # Standalone evaluation with tail-item analysis
+│   │   ├── evaluate_cold_start.py    # Cold-start simulation (Villain vs Hero ranks)
+│   │   ├── contrastive.py            # InfoNCE loss & hard-negative mining
+│   │   └── config.py                 # Hero-specific hyperparameter defaults
 │   │
 │   └── utils/                        # Shared utilities
 │       ├── __init__.py
-│       ├── metrics.py                # nDCG@12, MRR, Catalog Coverage
-│       └── helpers.py                # Logging, seeding, device selection, etc.
+│       ├── metrics.py                # nDCG@12, MRR, Catalog Coverage, tail-item rate
+│       ├── helpers.py                # Config loading, seeding, device selection, logging
+│       └── EDA.py                    # Visibility skew chart (long-tail visualization)
+│
+├── docs/
+│   ├── matrix_shapes.md              # Full tensor shape documentation (Villain + Hero)
+│   ├── decision_log.md               # Design decisions D1–D9 with rationale
+│   └── phase2_nishant_review.md      # Review & refinements to Nishant's Phase 2 work
 │
 ├── analytics/
 │   ├── metrics/                      # Evaluation outputs & metric logs
-│   │   └── README.md
-│   └── pareto/                       # Pareto trade-off study artifacts
-│       └── README.md
+│   └── pareto/                       # Pareto trade-off study artifacts (Phase 3)
 │
 ├── notebooks/                        # Exploratory & presentation notebooks
-│   └── 01_eda.ipynb                  # (placeholder) Initial data exploration
-│
-├── docs/
-│   └── matrix_shapes.md              # Matrix shape transformation documentation
 │
 ├── checkpoints/                      # Saved model weights (git-ignored)
-│   └── .gitkeep
+├── outputs/                          # Evaluation results JSON files
 │
-├── outputs/                          # Predictions, submission CSVs, figures
-│   └── .gitkeep
-│
-├── h-and-m-personalized-fashion-recommendations/   # Raw H&M dataset (already present)
-│   ├── articles.csv
-│   ├── customers.csv
-│   ├── transactions_train.csv
-│   ├── sample_submission.csv
-│   └── images/
-│
-└── .venv/                            # Python 3.13 virtual environment (already created)
+└── h-and-m-personalized-fashion-recommendations/   # Raw H&M dataset (git-ignored)
+    ├── articles.csv
+    ├── customers.csv
+    ├── transactions_train.csv
+    └── images/
 ```
 
 ---
@@ -102,20 +127,50 @@ ADLProject1/
 # 1. Activate virtual environment
 .venv\Scripts\Activate.ps1          # Windows PowerShell
 
-# 2. Install dependencies
+# 2. Install PyTorch with CUDA 12.8 (RTX 5070 Ti)
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
+
+# 3. Install remaining dependencies
 pip install -r requirements.txt
 
-# 3. Run the full pipeline
+# 4. Run the full pipeline (all 6 stages)
 python run_all.py --config config.yaml
+
+# Or run individual stages:
+python run_all.py --stage sample          # Data sampling only
+python run_all.py --stage embed           # Visual embedding extraction + fusion
+python run_all.py --stage train_villain   # Train Villain baseline
+python run_all.py --stage train_hero      # Train Hero model
+python run_all.py --stage evaluate        # Evaluate both + cold-start analysis
 ```
 
 ---
 
-## Multi-Objective Evaluation
-| Metric             | Description                                     |
-|--------------------|-------------------------------------------------|
-| **nDCG@12**        | Normalized Discounted Cumulative Gain at rank 12 |
-| **MRR**            | Mean Reciprocal Rank                             |
-| **Catalog Coverage** | Fraction of catalog surfaced in recommendations |
+## Architecture
 
-See `analytics/pareto/` for the Pareto trade-off study between these objectives.
+### Villain (Baseline — Text-Only)
+- **SASRec** with 3-layer Transformer encoder (128-dim, 4 heads)
+- Learnable `pop_bias` vector amplifies popular items
+- ~4.1M parameters | Batch size 256 | Max sequence length 50
+
+### Hero (Main Model — Multimodal)
+- **Behavior Sequence Transformer** with ResNet50 visual embeddings
+- `VisualProjection`: Linear(2048→128) + LayerNorm + Dropout
+- Element-wise fusion: item\_emb + pos\_emb + visual\_proj → TransformerEncoder
+- Combined loss: `L = L_CE + 0.3 × L_InfoNCE` (contrastive learning)
+- ~4.1M parameters | Batch size 128 | Max sequence length 50
+
+See `docs/matrix_shapes.md` for full tensor shape documentation through both models.
+
+---
+
+## Multi-Objective Evaluation
+| Metric | Description |
+|--------|-------------|
+| **nDCG@12** | Normalized Discounted Cumulative Gain at rank 12 |
+| **MRR** | Mean Reciprocal Rank |
+| **Catalog Coverage** | Fraction of catalog surfaced in top-12 recommendations |
+| **Tail-Item Rate** | Fraction of recommendations going to long-tail items (<10 purchases) |
+| **Mean Tail Score** | Average inverse-popularity of recommended items |
+
+See `docs/decision_log.md` for design rationale and `analytics/pareto/` for the Phase 3 trade-off study.

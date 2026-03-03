@@ -134,9 +134,12 @@ class HeroModel(nn.Module):
         seq_repr = self.emb_dropout(seq_repr)
 
         # Causal Attention Mask (to prevent looking at future items in the sequence)
-        # size (S, S) where upper triangle is -inf
-        mask = nn.Transformer.generate_square_subsequent_mask(seq_len).to(item_seq.device)
-        
+        # Bool upper-triangular mask: True = blocked position (consistent with Villain)
+        causal_mask = torch.triu(
+            torch.ones(seq_len, seq_len, dtype=torch.bool, device=item_seq.device),
+            diagonal=1,
+        )
+
         # Padding mask: True where item_seq == 0 (PAD_IDX)
         # size (B, S)
         key_padding_mask = (item_seq == 0)
@@ -146,9 +149,9 @@ class HeroModel(nn.Module):
         # and causal mask as src_mask, padding mask as src_key_padding_mask
         encoded_seq = self.transformer(
             seq_repr,
-            mask=mask,
+            mask=causal_mask,
             src_key_padding_mask=key_padding_mask,
-            is_causal=True
+            is_causal=True,
         )
 
         # 4. Extract seq representation (we take the last item's representation)
