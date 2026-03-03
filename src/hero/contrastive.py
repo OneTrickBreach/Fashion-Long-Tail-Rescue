@@ -101,25 +101,12 @@ def hard_negative_mining(embeddings, attributes, num_negatives=10):
         Tensor: indices of hard negatives. Shape (num_items, num_negatives)
     """
     num_items = embeddings.size(0)
-    hard_negatives = torch.zeros((num_items, num_negatives), dtype=torch.long)
-    
-    # We want this to run relatively fast so we don't hold up training.
-    # In a real large-scale system, this would be computed offline or async.
-    # For now we'll do a simple randomized fallback if attribute overlaps are slow.
-    
-    # Simplified logic: 
-    # Just sample random items for now to ensure the API matches, but bias it 
-    # slightly if we wanted to fully implement strict attribute Jaccard.
-    # Since doing N^2 Jaccard on 105k items is O(N^2), we approximate:
-    
-    # Placeholder: purely random negatives for speed until we have the attribute graph
-    # Random sampling across the item catalog (excluding 0 which is PAD).
-    
-    for i in range(num_items):
-        # random negatives in [1, num_items-1]
-        random_negs = torch.randint(1, num_items, size=(num_negatives,))
-        hard_negatives[i] = random_negs
-        
+
+    # Vectorised random negatives — avoids O(num_items) Python loop.
+    # Samples uniformly from [1, num_items) to exclude PAD index 0.
+    # Full attribute-based Jaccard mining is deferred until Phase 3.
+    hard_negatives = torch.randint(1, num_items, size=(num_items, num_negatives))
+
     return hard_negatives
 
 if __name__ == "__main__":

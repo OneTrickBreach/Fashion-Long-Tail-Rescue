@@ -128,19 +128,119 @@ positions (B, S) ──► nn.Embedding(S, D) ──► pos_emb (B, S, D)
 
 ## 4. Hero Model (Multimodal BST + Contrastive)
 
-| Stage | Tensor | Shape | Notes |
-|-------|--------|-------|-------|
-| Text embedding | `text_emb` | `(B, S, D_hero)` | `(256, 50, 128)` — ID + Positional embeddings |
-| Visual embedding | `vis_emb` | `(B, S, 2048)` | `(256, 50, 2048)` — From pre-computed ResNet50 |
-| Projection layer | `vis_proj` | `(B, S, D_hero)` | `(256, 50, 128)` — Linear(2048, 128) |
-| Fused input | `fused` | `(B, S, D_hero)` | `(256, 50, 128)` — text_emb + vis_proj + LayerNorm |
-| BST encoder output | `bst_out` | `(B, S, D_hero)` | `(256, 50, 128)` — 3-layer, 4-head |
-| Pooled representation | `user_repr` | `(B, D_hero)` | `(256, 128)` — Last valid hidden state |
-| Prediction logits | `logits` | `(B, V)` | `(256, 26933)` — Dot product with item embeddings + visual embeddings |
-| Contrastive anchor | `anchor` | `(B, D_hero)` | `(256, 128)` — User representation |
-| Contrastive positive | `positive` | `(B, D_hero)` | `(256, 128)` — Target item embed + target visual embed |
-| Contrastive negatives | `negatives` | `(N, D_hero)` | `(num_negatives, 128)` — Hard negatives drawn per epoch |
+> **Note:** Hero uses `B=128` (config.yaml → hero.batch_size), not 256 like the Villain.
+
+| Symbol | Value | Source |
+|--------|-------|--------|
+| `B` | 128 | `config.yaml → hero.batch_size` |
+| `S` | 50 | `config.yaml → hero.max_seq_len` |
+| `D` | 128 | `config.yaml → hero.hidden_dim` |
+| `H` | 4 | `config.yaml → hero.num_heads` |
+| `L` | 3 | `config.yaml → hero.num_layers` |
+| `V` | 26,933 | Same vocabulary as Villain (26,932 articles + PAD) |
+| `E` | 2048 | `config.yaml → embedding.dim` (ResNet50 output) |
+
+### Forward Pass
+
+```
+item_seq (B, S) ──► nn.Embedding(V, D) ──► item_emb (B, S, D)
+                                                  │
+positions (B, S) ──► nn.Embedding(S, D) ──► pos_emb (B, S, D)
+                                                  │
+                                            ┌─────┤
+                                            ▼     ▼
+                                        add ──► seq_repr (B, S, D)
+                                            │
+     ┌──────────────────────────────────────┤ use_visual=True?
+     │                                      │
+     ▼                                      │ (skip if no visual)
+visual_embeds (B, S, E)                     │
+     │                                      │
+     ▼ VisualProjection                     │
+  Linear(E→D) ──► (B, S, D)                │
+  LayerNorm(D)                              │
+  Dropout(0.1)                              │
+     │                                      │
+     ▼── v_proj (B, S, D)                   │
+     │                                      │
+     ▼                                      ▼
+   seq_repr = seq_repr + v_proj ──► fusion_norm(LayerNorm)
+                                            │
+                                            ▼
+                                      fused (B, S, D)
+                                            │
+                                       Dropout(0.1)
+                                            │
+                                            ▼
+                            ┌── TransformerEncoder (×3 layers) ──┐
+                            │    MultiHeadAttention(D, H=4)      │
+                            │    FFN: D → 4D → D (GELU)         │
+                            │    causal_mask: (S, S) bool        │
+                            │    pad_mask:    (B, S) bool        │
+                            └────────────────────────────────────┘
+                                            │
+                                            ▼
+                                   encoded_seq (B, S, D)
+                                            │
+                                  gather(seq_lens = last non-PAD)
+                                            │
+                                            ▼
+                                  final_states (B, D) ──────────────┐
+                                            │                       │
+                               final_states @ item_emb.weight.T     │
+                                            │                       │
+                                            ▼                       │
+                                   logits (B, V)                    │
+                                                                    │
+                              ┌─────────────────────────────────────┘
+                              │   Contrastive Learning Head
+                              │
+                              ▼
+                        anchor = final_states                (B, D)
+                        positive = item_emb(target)          (B, D)
+                        negatives = item_emb(hard_neg_idx)   (B, N_neg, D)
+                              │
+                              ▼
+                      InfoNCE Loss (temperature=0.07)
+                              │
+                              ▼
+                L_total = L_CE(logits, target) + 0.3 × L_InfoNCE
+```
+
+### Shape Summary Table
+
+| Stage | Tensor | Shape | Actual |
+|-------|--------|-------|--------|
+| Input item IDs | `item_seq` | `(B, S)` | `(128, 50)` |
+| Item embedding lookup | `item_emb` | `(B, S, D)` | `(128, 50, 128)` |
+| Position embedding | `pos_emb` | `(B, S, D)` | `(128, 50, 128)` |
+| Pre-fusion sum | `seq_repr` | `(B, S, D)` | `(128, 50, 128)` |
+| Visual input | `visual_embeds` | `(B, S, E)` | `(128, 50, 2048)` |
+| Visual projection | `v_proj` | `(B, S, D)` | `(128, 50, 128)` |
+| Fused + LayerNorm | `fused` | `(B, S, D)` | `(128, 50, 128)` |
+| Causal attention mask | `causal_mask` | `(S, S)` | `(50, 50)` |
+| Padding mask | `pad_mask` | `(B, S)` | `(128, 50)` |
+| Transformer output | `encoded_seq` | `(B, S, D)` | `(128, 50, 128)` |
+| Last valid hidden | `final_states` | `(B, D)` | `(128, 128)` |
+| Prediction logits | `logits` | `(B, V)` | `(128, 26933)` |
+| Contrastive anchor | `anchor` | `(B, D)` | `(128, 128)` |
+| Contrastive positive | `positive` | `(B, D)` | `(128, 128)` |
+| Contrastive negatives | `negatives` | `(B, N, D)` | `(128, 10, 128)` |
+| CE loss target | `target` | `(B,)` | `(128,)` |
+
+### Parameter Count
+
+| Component | Parameters |
+|-----------|-----------|
+| `item_embedding` | V × D = 26,933 × 128 = **3,447,424** |
+| `position_embedding` | S × D = 50 × 128 = **6,400** |
+| `emb_dropout` | 0 (no learnable params) |
+| `VisualProjection.proj` | E × D + D = 2048 × 128 + 128 = **262,272** |
+| `VisualProjection.norm` | 2 × D = **256** |
+| `fusion_norm` (LayerNorm) | 2 × D = **256** |
+| `TransformerEncoder` (×3) | 3 × (4D² + 4D + 4D² + 4D + 4D) ≈ **396,672** |
+| **Total** | ≈ **4,113,280** |
 
 ---
 
-> **Last updated:** Feb 18, 2026 — after beefed-up Villain training run.
+> **Last updated:** Mar 3, 2026 — Hero forward pass diagram added; Hero batch size corrected to 128.

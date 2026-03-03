@@ -12,13 +12,16 @@ PURPOSE:
 VILLAIN_DEFAULTS = {
     "model_type": "sasrec",
     "max_seq_len": 50,
-    "hidden_dim": 64,
-    "num_heads": 2,
-    "num_layers": 2,
+    "hidden_dim": 128,
+    "num_heads": 4,
+    "num_layers": 3,
     "dropout": 0.2,
     "lr": 0.001,
-    "epochs": 30,
+    "weight_decay": 0.01,
+    "epochs": 50,
     "batch_size": 256,
+    "checkpoint_every": 5,
+    "patience": 10,
 }
 
 
