@@ -29,7 +29,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Seeing the Unseen — Full Pipeline")
     parser.add_argument("--config", type=str, default="config.yaml", help="Path to config file")
     parser.add_argument("--stage", type=str, default="all",
-                        choices=["all", "sample", "embed", "train_villain", "train_hero", "evaluate"],
+                        choices=["all", "sample", "embed", "train_villain", "train_hero", "evaluate", "ablation", "pareto_sweep", "pareto_plot"],
                         help="Run a specific stage only")
     parser.add_argument("--skip-sampling", action="store_true", help="Skip data sampling step")
     return parser.parse_args()
@@ -84,9 +84,27 @@ def main():
 
     # Stage 6: Cold-Start Analysis
     if args.stage in ("all", "evaluate"):
-        logger.info("[6/6] Running cold-start analysis...")
+        logger.info("[6/9] Running cold-start analysis...")
         from src.hero.evaluate_cold_start import run_cold_start_simulation
         run_cold_start_simulation(config)
+
+    # Stage 7: Ablation Study — ID-only Hero (Phase 3)
+    if args.stage in ("all", "ablation"):
+        logger.info("[7/9] Running ablation study (ID-only Hero)...")
+        from src.hero.ablation import run_ablation
+        run_ablation(config)
+
+    # Stage 8: Pareto λ-Discovery Sweep (Phase 3)
+    if args.stage in ("all", "pareto_sweep"):
+        logger.info("[8/9] Running Pareto λ-discovery sweep...")
+        from src.hero.pareto_sweep import run_pareto_sweep
+        run_pareto_sweep(config)
+
+    # Stage 9: Pareto Front Visualisation (Phase 3)
+    if args.stage in ("all", "pareto_plot"):
+        logger.info("[9/9] Generating Pareto front visualisation...")
+        from src.utils.pareto_plot import generate_pareto_plots
+        generate_pareto_plots(config)
 
     logger.info("Pipeline complete.")
 

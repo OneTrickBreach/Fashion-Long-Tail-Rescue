@@ -101,7 +101,7 @@ L_discovery:       scalar                  — dot(softmax_probs, pop_logit_vect
 
 ---
 
-### 3. Pareto Sweep Experiments — *Ishan's portion*
+### 3. [DONE] Pareto Sweep Experiments — *Ishan's portion*  *(Task Complete)*
 
 > Run the Hero with multiple `λ_disc` values to map the Pareto front.
 
@@ -134,7 +134,7 @@ L_discovery:       scalar                  — dot(softmax_probs, pop_logit_vect
 
 ---
 
-### 4. Ablation Study — *Elizabeth's portion*
+### 4. [DONE] Ablation Study — *Elizabeth's portion*  *(Task Complete)*
 
 > Quantify the "Visual Lift": how much did adding ResNet50 images help discovery
 > vs. using only the item-ID sequence?
@@ -364,3 +364,118 @@ Items with 0 transactions were missing from `pop_logit_dict` and defaulted to `0
 
 **Bug 4 — Stale docstrings (severity: LOW, rules.md §3 violation)**
 `contrastive.py` KEY COMPONENTS section didn't mention `MultiObjectiveLoss`. `trainer.py` docstring still referenced "combined loss (recommendation + contrastive)". **Fix:** Updated both to reflect the new three-term multi-objective loss.
+
+---
+
+#### ✅ Task 3: Pareto Sweep Experiments — DONE
+
+**What was built:** `src/hero/pareto_sweep.py` — a self-contained sweep driver that:
+
+1. Loads data **once** (shared across all λ values) — rules.md §6 compliance.
+2. Pre-computes popularity logit tensor (same logic as `trainer.py`, no duplicate CSV read).
+3. For each `λ_disc` in `config.yaml → pareto.lambda_values` (0.0, 0.3, 0.7, 1.0):
+   - Loads the Phase 2 Hero checkpoint (`hero_best.pt`) as starting weights.
+   - Creates a **fresh** AdamW optimizer + ReduceLROnPlateau scheduler.
+   - Constructs `MultiObjectiveLoss` with the current `λ_disc`.
+   - Fine-tunes for 20 epochs (with early stopping at `patience=10`).
+   - Tracks best val nDCG and restores best model weights.
+   - Saves per-λ checkpoint to `checkpoints/hero_lambda_{λ}.pt`.
+   - Runs full test evaluation using `compute_multi_objective_metrics()` — reports nDCG@12, MRR, catalog coverage, tail item rate, mean tail score.
+4. Saves results **incrementally** to `outputs/pareto_sweep_results.json` (survives interruption).
+5. Prints a summary table at the end.
+
+**Key design decisions:**
+- Fine-tune from checkpoint (not from scratch) — saves ~75% GPU time.
+- Fresh optimizer per λ — avoids momentum contamination between sweep points.
+- Evaluation maps contiguous indices back to raw article IDs for accurate sales-count-based tail metrics.
+- All paths and hyperparameters from `config.yaml` (rules.md §2).
+
+**Pipeline integration:**
+- `run_all.py` updated with three new stages: `pareto_sweep`, `pareto_plot`, `ablation`.
+- `python run_all.py --stage pareto_sweep` runs the full sweep.
+
+**Smoke test results:**
+- Import: OK
+- Forward + backward pass (λ=0.3): `total=6.03, CE=8.52, CL=1.05, Disc=-9.33` — all gradients flow correctly.
+- Evaluation function: OK — returns all 6 multi-objective metrics.
+- No errors on any code path.
+
+---
+
+#### ✅ Task 3 — Pareto Sweep Execution Results
+
+| λ_disc | nDCG@12 | MRR | Catalog Coverage | Tail Rate |
+|--------|---------|-----|------------------|-----------|
+| 0.0    | 0.1319  | 0.1212 | 60.0% | 4.2% |
+| 0.3    | 0.1328  | 0.1227 | 67.6% | 6.6% |
+| 0.7    | 0.0854  | 0.0733 | 74.6% | 81.7% |
+| 1.0    | 0.0653  | 0.0522 | 71.5% | 88.2% |
+
+**λ=0.3 is the Pareto-optimal sweet spot** — coverage jumps +7.6pp with virtually no nDCG sacrifice.
+
+---
+
+#### ✅ Task 4: Ablation Study — DONE
+
+**What was built:** `src/hero/ablation.py` — a self-contained ablation driver that:
+
+1. Builds dataloaders with `use_visual=False` (no multimodal embeddings loaded).
+2. Trains the ID-only Hero **from scratch** (same architecture minus `VisualProjection`).
+   - Same hyperparameters (lr, epochs, patience) for fair comparison.
+   - Checkpoints to `hero_no_visual_best.pt` / `hero_no_visual_latest.pt` (no overwrite).
+   - Supports checkpoint resume if interrupted.
+3. Evaluates on test set with full multi-objective metrics + per-bucket breakdown + recommendation bias.
+4. Runs cold-start simulation (without visual catalog injection).
+5. Loads existing Villain + visual Hero results from `outputs/` and builds a comparison table:
+   Villain vs Hero (ID-only) vs Hero (visual) with visual lift deltas.
+6. Saves everything to `outputs/hero_ablation_no_visual.json`.
+
+**Pipeline integration:**
+- `run_all.py` updated with `ablation` stage (#7 of 9).
+- `python run_all.py --stage ablation` runs the full ablation.
+
+**Smoke test results:**
+- Data loads correctly with `use_visual=False` — no `visual_embeds` in batches.
+- ID-only HeroModel: 4,048,640 params (vs ~7.3M with visual projection).
+- Forward + backward pass: `total=53.61, CE=52.79, CL=2.73, Disc=0.00` — gradients flow.
+- Evaluation: OK.
+- Cold-start simulation: OK (751 cold-start samples found, 100 evaluated).
+- No errors on any code path.
+
+---
+
+#### ✅ Task 4 — Ablation Execution Results
+
+| Model | nDCG@12 | MRR | Coverage | Cold-Start Rank |
+|-------|---------|-----|----------|-----------------|
+| Villain | 0.1448 | 0.1316 | 57.8% | 26,159 |
+| Hero (ID-only) | 0.1308 | 0.1204 | 60.7% | 24,900 |
+| Hero (visual) | 0.1312 | 0.1205 | 61.9% | 20,374 |
+
+**Visual Lift:** Δ nDCG +0.03%, Δ Coverage +1.25pp, **Δ Cold-Start Rank +4,525** (lower = better).
+ID-only trained 45 epochs (best at epoch 35, val nDCG 0.1073). Visual features provide minimal lift on warm items but dramatically help cold-start.
+
+---
+
+#### 🔧 Post-Implementation Review — Tasks 3 & 4 (6 bugs fixed)
+
+**Bug S1 — `FINETUNE_EPOCHS` hardcoded in pareto_sweep.py (severity: MEDIUM, rules.md §2)**
+Module-level constant `FINETUNE_EPOCHS = 20` bypassed config.yaml. **Fix:** Added `pareto.finetune_epochs: 20` to config.yaml; sweep now reads it at runtime.
+
+**Bug S2 — Unused `val_ce` in pareto_sweep.py (severity: LOW)**
+`val_ce = nn.CrossEntropyLoss(ignore_index=0)` was declared but never used in the validation loop. **Fix:** Removed.
+
+**Bug S3 — Import inside function body in pareto_sweep.py (severity: LOW, rules.md §3)**
+`from src.utils.metrics import compute_all_metrics` was imported inside `finetune_and_evaluate()`. **Fix:** Moved to top-level imports.
+
+**Bug S4 — Unused import `numpy` in pareto_sweep.py (severity: LOW)**
+`import numpy as np` was imported but never referenced. **Fix:** Removed.
+
+**Bug A1 — Double CSV read in ablation.py (severity: MEDIUM, rules.md §6)**
+`_evaluate_id_only()` re-read `transactions_sampled.csv` to build pop buckets — same pattern as Bug 3 from Tasks 1–2 review. **Fix:** Derived buckets from `meta["item_sales_counts"]` instead.
+
+**Bug A2 — Unused import in ablation.py (severity: LOW)**
+`load_multimodal_embeddings` imported but never used (ID-only model). **Fix:** Removed.
+
+**Bug A3 — Double file read in ablation.py (severity: LOW)**
+`hero_cold_start_results.json` was opened and parsed twice. **Fix:** Read once, extract both `hero` and `villain` sections.

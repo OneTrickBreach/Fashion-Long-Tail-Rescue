@@ -69,6 +69,7 @@ hero:
 
 pareto:
   lambda_values: [0.0, 0.3, 0.7, 1.0]
+  finetune_epochs: 20               # Per-λ fine-tune budget (plan spec: 15-20)
   metric_x: "catalog_coverage"
   metric_y: "ndcg@12"
   output_dir: "analytics/pareto"
