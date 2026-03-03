@@ -141,6 +141,115 @@ positions (B, S) ──► nn.Embedding(S, D) ──► pos_emb (B, S, D)
 | Contrastive positive | `positive` | `(B, D_hero)` | `(256, 128)` — Target item embed + target visual embed |
 | Contrastive negatives | `negatives` | `(N, D_hero)` | `(num_negatives, 128)` — Hard negatives drawn per epoch |
 
+**Config:** `batch_size=256` · `max_seq_len=50` · `hidden_dim=128` · `num_heads=4` · `num_layers=3`
+
 ---
 
-> **Last updated:** Feb 18, 2026 — after beefed-up Villain training run.
+## Layer 1 — Input Fusion
+
+| Tensor | Shape | Notes |
+|--------|-------|-------|
+| `text_emb` | `(256, 50, 128)` | ID embedding + positional embedding |
+| `vis_raw` | `(256, 50, 2048)` | Raw ResNet50 output (Elizabeth's pipeline) |
+| `vis_proj` | `(256, 50, 128)` | Linear(2048 → 128) projection of visual features |
+| `fused` | `(256, 50, 128)` | `text_emb + vis_proj + LayerNorm` — output of Layer 1 |
+
+---
+
+## Layer 2 — Position + Time Encoding
+
+| Tensor | Shape | Notes |
+|--------|-------|-------|
+| `fused` | `(256, 50, 128)` | Input from Layer 1 |
+| `pos_embed` | `(256, 50, 128)` | Learnable position table `nn.Embedding(50, 128)` |
+| `time_embed` | `(256, 50, 128)` | Time-gap encoding — days since purchase |
+| `X` | `(256, 50, 128)` | `fused + pos_embed + time_embed` — input to transformer |
+
+---
+
+## Transformer Block ×3 (Layers 3–7)
+
+> Layers 3–7 repeat `num_layers=3` times. Output of each block becomes input `X` for the next.
+
+### Layer 3 — Linear Projections → Q, K, V
+
+| Tensor | Shape | Notes |
+|--------|-------|-------|
+| `X` | `(256, 50, 128)` | Input sequence |
+| `W_Q` | `(128, 128)` | Learned query weight matrix |
+| `W_K` | `(128, 128)` | Learned key weight matrix |
+| `W_V` | `(128, 128)` | Learned value weight matrix |
+| `Q` | `(256, 4, 50, 32)` | `X @ W_Q` split into 4 heads · `head_dim = 128 ÷ 4 = 32` |
+| `K` | `(256, 4, 50, 32)` | `X @ W_K` split into 4 heads |
+| `V` | `(256, 4, 50, 32)` | `X @ W_V` split into 4 heads |
+
+---
+
+### Layer 4 — Attention Scores
+
+| Tensor | Shape | Notes |
+|--------|-------|-------|
+| `Q` | `(256, 4, 50, 32)` | From Layer 3 |
+| `Kᵀ` | `(256, 4, 32, 50)` | K transposed on last two dims |
+| `scores` | `(256, 4, 50, 50)` | `Q @ Kᵀ / √32` · scale factor `√32 ≈ 5.66` |
+
+> Causal mask applied — item `i` cannot attend to items after position `i`.
+
+---
+
+### Layer 5 — Softmax → Attention Weights
+
+| Tensor | Shape | Notes |
+|--------|-------|-------|
+| `scores` | `(256, 4, 50, 50)` | Input from Layer 4 |
+| `attn_weights` | `(256, 4, 50, 50)` | `softmax(scores, dim=-1)` · each row sums to 1.0 |
+
+> `dropout=0.1` applied to attention weights during training.
+
+---
+
+### Layer 6 — Weighted Values
+
+| Tensor | Shape | Notes |
+|--------|-------|-------|
+| `attn_weights` | `(256, 4, 50, 50)` | From Layer 5 |
+| `V` | `(256, 4, 50, 32)` | From Layer 3 |
+| `context` | `(256, 4, 50, 32)` | `attn_weights @ V` per head |
+| `context` | `(256, 50, 128)` | Concat 4 heads · `4 × 32 = 128` |
+
+---
+
+### Layer 7 — Output Projection + Residual
+
+| Tensor | Shape | Notes |
+|--------|-------|-------|
+| `context` | `(256, 50, 128)` | From Layer 6 |
+| `W_O` | `(128, 128)` | Learned output projection matrix |
+| `X` | `(256, 50, 128)` | Residual — same X that entered Layer 3 |
+| `hidden_state` | `(256, 50, 128)` | `LayerNorm(context @ W_O + X)` — output of block |
+
+> `hidden_state` becomes the new `X` for the next transformer block.
+
+---
+
+## Layer 8 — Extract Last Position
+
+| Tensor | Shape | Notes |
+|--------|-------|-------|
+| `transformer_out` | `(256, 50, 128)` | Output of Block 3 (final transformer block) |
+| `user_repr` | `(256, 128)` | `transformer_out[:, -1, :]` — last valid hidden state |
+
+---
+
+## Layer 9 — Dot With Item Bank
+
+| Tensor | Shape | Notes |
+|--------|-------|-------|
+| `user_repr` | `(256, 128)` | From Layer 8 |
+| `item_embeddings` | `(26933, 128)` | Full item bank — one 128-dim row per article |
+| `logits` | `(256, 26933)` | `user_repr @ item_embeddings.T` — one score per item per user |
+
+---
+
+> **Last updated:** Nishant: March 3, 2026 — after Phase 2 hero run.
+
