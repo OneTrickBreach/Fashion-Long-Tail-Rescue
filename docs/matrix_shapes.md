@@ -243,4 +243,49 @@ visual_embeds (B, S, E)                     │
 
 ---
 
-> **Last updated:** Mar 3, 2026 — Hero forward pass diagram added; Hero batch size corrected to 128.
+## 5. Multi-Objective Discovery Loss (Phase 3)
+
+> Extension of the Hero loss to a three-term objective with tuneable discovery weight.
+
+```
+logits (B, V) ──► softmax ──► softmax_probs (B, V)
+                                     │
+pop_logit_vector (V,)                │   (pre-computed, on GPU)
+         │                           │
+         ▼                           ▼
+    dot(softmax_probs, pop_logit_vector) ──► per-sample score (B,)
+                                                    │
+                                               mean over batch
+                                                    │
+                                                    ▼
+                                            L_discovery (scalar)
+
+L_total = L_CE(logits, targets)
+        + λ_CL  * L_contrastive(anchor, pos, negs)    # existing (0.3)
+        + λ_disc * L_discovery                         # NEW (tuneable)
+```
+
+### Shape Summary Table
+
+| Stage | Tensor | Shape | Actual |
+|-------|--------|-------|--------|
+| Model output logits | `logits` | `(B, V)` | `(128, 26933)` |
+| Softmax probabilities | `softmax_probs` | `(B, V)` | `(128, 26933)` |
+| Popularity logit vector | `pop_logit_vector` | `(V,)` | `(26933,)` |
+| Per-sample discovery score | `disc_scores` | `(B,)` | `(128,)` |
+| Discovery loss | `L_discovery` | scalar | `()` |
+| Contrastive loss | `L_contrastive` | scalar | `()` |
+| CE loss | `L_CE` | scalar | `()` |
+| Total loss | `L_total` | scalar | `()` |
+
+### Hard-Negative Mining Matrix (Phase 3 Upgrade)
+
+| Stage | Tensor | Shape | Actual |
+|-------|--------|-------|--------|
+| Binary attribute matrix | `attr_matrix` | `(V, A)` | `(26933, ~180)` |
+| Pairwise Jaccard (chunked) | `jaccard_chunk` | `(chunk, V)` | `(512, 26933)` |
+| Pre-computed negative indices | `neg_idx` | `(V, N_neg)` | `(26933, 10)` |
+
+---
+
+> **Last updated:** Mar 4, 2026 — Phase 3 multi-objective loss and hard-negative mining shapes added.
