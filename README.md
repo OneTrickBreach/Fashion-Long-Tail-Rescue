@@ -33,19 +33,23 @@ Behavior Sequence Transformer with an Attribute-Aware Contrastive Learning head
 |-------|-------------|--------|
 | **Phase 1** | Data Engineering & Custom Baseline (Villain) | ✅ Complete |
 | **Phase 2** | The "Hero" Model — Style & Sequential Intent | ✅ Complete |
-| **Phase 3** | Multi-Objective Pareto Study | 🔲 In Progress |
+| **Phase 3** | Multi-Objective Pareto Study | ✅ Complete |
 | **Phase 4** | Final Submission & Presentation | 🔲 Pending |
 
-### Key Results (Phase 2)
+### Key Results
 
-| Metric | Villain | Hero | Target |
-|--------|---------|------|--------|
-| **Tail-item recommendation rate** | 2.2% | **10.98%** | ≥ 8% |
-| **nDCG@12** | 0.145 | — | — |
-| **Cold-start rank improvement** | — | ~6,000 ranks higher | Hero >> Villain |
+| Metric | Villain | Hero (λ=0) | Hero (λ=0.3) | Hero (λ=0.7) |
+|--------|---------|------------|--------------|---------------|
+| **nDCG@12** | 0.145 | 0.132 | **0.133** | 0.085 |
+| **Catalog Coverage** | 57.8% | 60.0% | **67.6%** | 74.6% |
+| **Tail-Item Rate** | 2.2% | 4.2% | **6.6%** | 81.7% |
+| **Cold-Start Rank** | 26,159 | — | — | — |
 
-The Hero model shifted completely unseen (cold-start) items ~6,000 ranks higher than
-the Villain, and boosted tail-item recommendations from 2.2% to 10.98%.
+**Phase 3 headline:** λ=0.3 is the Pareto-optimal sweet spot — +7.6pp catalog coverage
+and +2.3pp tail-item rate with *zero* nDCG sacrifice vs. the base Hero.
+
+**Visual ablation:** ResNet50 embeddings provide minimal warm-item lift (+0.03% nDCG)
+but dramatically improve cold-start ranking (+4,525 positions).
 
 ---
 
@@ -55,7 +59,7 @@ the Villain, and boosted tail-item recommendations from 2.2% to 10.98%.
 ADLProject1/
 │
 ├── README.md                         # ← You are here
-├── run_all.py                        # Master script: sample → embed → train → evaluate
+├── run_all.py                        # Master script: 9-stage pipeline (sample → ... → pareto_plot)
 ├── requirements.txt                  # Pip-installable dependencies
 ├── config.yaml                       # Central hyper-parameters & paths (single source of truth)
 ├── plan.md                           # Project plan & task distribution
@@ -87,26 +91,31 @@ ADLProject1/
 │   ├── hero/                         # Main model: multimodal BST + contrastive head
 │   │   ├── __init__.py
 │   │   ├── model.py                  # BST encoder with VisualProjection fusion
-│   │   ├── trainer.py                # Training loop (CE + InfoNCE combined loss)
+│   │   ├── trainer.py                # Training loop (CE + InfoNCE + Discovery loss)
 │   │   ├── evaluate.py               # Standalone evaluation with tail-item analysis
 │   │   ├── evaluate_cold_start.py    # Cold-start simulation (Villain vs Hero ranks)
-│   │   ├── contrastive.py            # InfoNCE loss & hard-negative mining
+│   │   ├── contrastive.py            # InfoNCE loss, MultiObjectiveLoss & hard-negative mining
+│   │   ├── pareto_sweep.py           # Phase 3: λ-discovery fine-tune sweep
+│   │   ├── ablation.py               # Phase 3: visual ablation study (ID-only Hero)
 │   │   └── config.py                 # Hero-specific hyperparameter defaults
+│   │
+│   ├── phase3.py                     # Nishant's standalone Pareto plot script
 │   │
 │   └── utils/                        # Shared utilities
 │       ├── __init__.py
 │       ├── metrics.py                # nDCG@12, MRR, Catalog Coverage, tail-item rate
 │       ├── helpers.py                # Config loading, seeding, device selection, logging
+│       ├── pareto_plot.py            # Phase 3: Pareto front & tail-rate curve plots
 │       └── EDA.py                    # Visibility skew chart (long-tail visualization)
 │
 ├── docs/
 │   ├── matrix_shapes.md              # Full tensor shape documentation (Villain + Hero)
-│   ├── decision_log.md               # Design decisions D1–D9 with rationale
+│   ├── decision_log.md               # Design decisions D1–D13 with rationale
 │   └── phase2_nishant_review.md      # Review & refinements to Nishant's Phase 2 work
 │
 ├── analytics/
 │   ├── metrics/                      # Evaluation outputs & metric logs
-│   └── pareto/                       # Pareto trade-off study artifacts (Phase 3)
+│   └── pareto/                       # Pareto front plot + tail-rate curve (300 DPI)
 │
 ├── notebooks/                        # Exploratory & presentation notebooks
 │
@@ -133,15 +142,18 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 # 3. Install remaining dependencies
 pip install -r requirements.txt
 
-# 4. Run the full pipeline (all 6 stages)
+# 4. Run the full pipeline (all 9 stages)
 python run_all.py --config config.yaml
 
 # Or run individual stages:
-python run_all.py --stage sample          # Data sampling only
-python run_all.py --stage embed           # Visual embedding extraction + fusion
-python run_all.py --stage train_villain   # Train Villain baseline
-python run_all.py --stage train_hero      # Train Hero model
-python run_all.py --stage evaluate        # Evaluate both + cold-start analysis
+python run_all.py --stage sample          # 1. Data sampling
+python run_all.py --stage embed           # 2. Visual embedding extraction + fusion
+python run_all.py --stage train_villain   # 3. Train Villain baseline
+python run_all.py --stage train_hero      # 4. Train Hero model
+python run_all.py --stage evaluate        # 5-6. Evaluate both + cold-start analysis
+python run_all.py --stage ablation        # 7. Visual ablation study (ID-only Hero)
+python run_all.py --stage pareto_sweep    # 8. Multi-objective λ sweep
+python run_all.py --stage pareto_plot     # 9. Generate Pareto front visualisation
 ```
 
 ---
@@ -157,7 +169,9 @@ python run_all.py --stage evaluate        # Evaluate both + cold-start analysis
 - **Behavior Sequence Transformer** with ResNet50 visual embeddings
 - `VisualProjection`: Linear(2048→128) + LayerNorm + Dropout
 - Element-wise fusion: item\_emb + pos\_emb + visual\_proj → TransformerEncoder
-- Combined loss: `L = L_CE + 0.3 × L_InfoNCE` (contrastive learning)
+- **Phase 3 loss:** `L = L_CE + 0.3 × L_InfoNCE + λ_disc × L_discovery`
+  - Discovery loss penalises softmax mass on popular items (tuneable via `λ_disc`)
+  - Attribute-aware Jaccard hard-negative mining (replaces random negatives)
 - ~4.1M parameters | Batch size 128 | Max sequence length 50
 
 See `docs/matrix_shapes.md` for full tensor shape documentation through both models.
