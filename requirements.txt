@@ -33,3 +33,6 @@ seaborn>=0.12.0
 # --- Notebooks ---
 jupyterlab>=4.0.0
 ipywidgets>=8.0.0
+
+# --- Report Generation ---
+pdflatex>=0.1.3
