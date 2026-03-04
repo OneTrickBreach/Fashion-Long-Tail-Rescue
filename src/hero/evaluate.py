@@ -53,7 +53,7 @@ def evaluate_hero(config: dict, checkpoint_path: str | None = None) -> dict:
         checkpoint_path = os.path.join(ckpt_dir, "hero_best.pt")
     logger.info(f"Loading model from {checkpoint_path} …")
 
-    model = HeroModel(num_items=num_items, config=config).to(device)
+    model = HeroModel(config=config, num_items=num_items).to(device)
     ckpt = torch.load(checkpoint_path, map_location=device, weights_only=False)
     model.load_state_dict(ckpt["model_state_dict"])
     model.eval()

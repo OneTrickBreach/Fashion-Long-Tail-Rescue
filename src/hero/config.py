@@ -29,7 +29,9 @@ def get_hero_config(global_config: dict) -> dict:
     """
     Merge global config's hero section with defaults.
 
-    Values in config.yaml override HERO_DEFAULTS.
+    Values in config.yaml override HERO_DEFAULTS.  Nested dicts
+    (e.g. ``contrastive``) are merged recursively so that partial
+    overrides in config.yaml don't erase unspecified defaults.
 
     Args:
         global_config: Full parsed config.yaml dict.
@@ -39,5 +41,9 @@ def get_hero_config(global_config: dict) -> dict:
     """
     merged = {**HERO_DEFAULTS}
     if "hero" in global_config:
-        merged.update(global_config["hero"])
+        for key, value in global_config["hero"].items():
+            if isinstance(value, dict) and isinstance(merged.get(key), dict):
+                merged[key] = {**merged[key], **value}
+            else:
+                merged[key] = value
     return merged

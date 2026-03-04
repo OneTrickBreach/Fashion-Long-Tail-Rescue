@@ -13,20 +13,29 @@ import os
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 
-#Load sweep results
-with open("outputs/pareto_sweep_results.json") as f:
+from src.utils.helpers import load_config
+
+config = load_config()
+outputs_dir = config["paths"]["outputs"]
+
+# Load sweep results from config-driven path
+sweep_path = os.path.join(outputs_dir, "pareto_sweep_results.json")
+with open(sweep_path) as f:
     sweep = json.load(f)
 
-#Data points from sweep 
+#Data points from sweep
 # Each entry: {lambda, ndcg, coverage}
 lambdas   = [r["lambda_disc"]       for r in sweep]
 ndcgs     = [r["ndcg@12"]           for r in sweep]
 coverages = [r["catalog_coverage"]  * 100 for r in sweep]  # convert to %
 tail_rates = [r["tail_item_rate@k"] * 100 for r in sweep]
 
-# Villain baseline (from villain_eval_full.json)
-villain_ndcg     = 0.1448
-villain_coverage = 57.8
+# Villain baseline (loaded from evaluation output, not hardcoded)
+villain_path = os.path.join(outputs_dir, "villain_eval_full.json")
+with open(villain_path) as f:
+    villain_data = json.load(f)
+villain_ndcg     = villain_data["overall"]["ndcg@12"]
+villain_coverage = villain_data["overall"]["catalog_coverage"] * 100
 
 #Plot
 fig, ax = plt.subplots(figsize=(10, 7))

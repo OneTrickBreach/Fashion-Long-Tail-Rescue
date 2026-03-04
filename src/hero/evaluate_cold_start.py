@@ -81,7 +81,7 @@ def run_cold_start_simulation(config):
     villain.eval()
     
     print("Loading Hero model...")
-    hero = HeroModel(num_items=num_items, config=config).to(device)
+    hero = HeroModel(config=config, num_items=num_items).to(device)
     hero.load_state_dict(torch.load(os.path.join(paths["checkpoints"], "hero_best.pt"), map_location=device, weights_only=False)["model_state_dict"])
     hero.eval()
     

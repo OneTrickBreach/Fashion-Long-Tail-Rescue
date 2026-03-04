@@ -29,7 +29,8 @@ def get_villain_config(global_config: dict) -> dict:
     """
     Merge global config's villain section with defaults.
 
-    Values in config.yaml override VILLAIN_DEFAULTS.
+    Values in config.yaml override VILLAIN_DEFAULTS.  Nested dicts
+    are merged recursively so partial overrides don't erase defaults.
 
     Args:
         global_config: Full parsed config.yaml dict.
@@ -39,5 +40,9 @@ def get_villain_config(global_config: dict) -> dict:
     """
     merged = {**VILLAIN_DEFAULTS}
     if "villain" in global_config:
-        merged.update(global_config["villain"])
+        for key, value in global_config["villain"].items():
+            if isinstance(value, dict) and isinstance(merged.get(key), dict):
+                merged[key] = {**merged[key], **value}
+            else:
+                merged[key] = value
     return merged

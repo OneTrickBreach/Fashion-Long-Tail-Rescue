@@ -79,7 +79,7 @@ This is a comprehensive `plan.md` tailored for your team and optimized for a loc
 
 **Goal:** Prove the business trade-off between CTR and Discovery.
 
-> **Status: 🔄 IN PROGRESS** — Ishan and Elizabeth portions complete. Nishant's conclusions task remains.
+> **Status: ✅ COMPLETE** — All Phase 3 deliverables finished.
 
 ### [Loss Functions] Ishan: Pareto Optimization — ✅ DONE
 
@@ -113,15 +113,12 @@ This is a comprehensive `plan.md` tailored for your team and optimized for a loc
 
 **Visual Lift:** Δ Coverage +1.25pp, **Δ Cold-Start Rank +4,525** (visual features dramatically help unseen items).
 
-### [Conclusions] Nishant: The Pareto Curve & Final Story — 🔲 TODO
+### [Conclusions] Nishant: The Pareto Curve & Final Story — ✅ DONE
 
-> **Nishant — your task starts here.** All data and sweep results are ready. You need to produce the final visualisation and business narrative.
-
-**What to do:**
-
-1. **Pareto Front Plot:** Build a scatter plot with **Catalog Coverage** on the X-axis and **nDCG@12** on the Y-axis. Each point is one λ_disc value from the sweep. Data is in `outputs/pareto_sweep_results.json` (4 points: λ=0.0, 0.3, 0.7, 1.0). Annotate the Pareto-optimal point (λ=0.3). Save the plot to `analytics/pareto/pareto_front.png`.
-2. **Business Conclusion:** Write the narrative for the final presentation — "By sacrificing ~X% relevance, we gained ~Y% catalog discovery." Use the actual numbers from the sweep table above. λ=0.3 barely loses nDCG (+0.07%) while gaining +7.6pp coverage. This fulfills the "Incredible Conclusion" rubric requirement.
-3. **Optional:** Overlay the Villain baseline point (nDCG=0.1448, Coverage=57.8%) on the Pareto plot for dramatic contrast — shows the Hero already dominates the Villain even at λ=0.0.
+* ✅ **Pareto Front Plot:** `src/utils/pareto_plot.py::generate_pareto_plots()` — publication-quality scatter plot (Catalog Coverage × nDCG@12) with Villain baseline overlay and Pareto-optimal λ=0.3 annotation. Saved at 300 DPI to `analytics/pareto/pareto_front.png`.
+* ✅ **Tail Rate Curve:** Second panel plotting λ_disc vs Tail Item Rate, showing the tuneable discovery knob. Saved to `analytics/pareto/tail_rate_curve.png`.
+* ✅ **Business Narrative:** Console summary with headline numbers — λ=0.3 gains +7.6pp catalog coverage and +2.4pp tail-item exposure with zero nDCG sacrifice. Standalone script also available at `src/phase3.py`.
+* ✅ **Villain Baseline Overlay:** Villain point (nDCG=0.1448, Coverage=57.8%) plotted on the Pareto front for dramatic contrast — Hero dominates even at λ=0.0.
 
 ---
 
@@ -153,4 +150,4 @@ This is a comprehensive `plan.md` tailored for your team and optimized for a loc
 | **Elizabeth Coquillette** | Custom Baseline & Visual Features | Pandas, ResNet50, Scikit-learn |
 | **Nishant Suresh** | Evaluation Dashboard & Presentation Visuals | Matplotlib, Plotly, LaTeX |
 
-**Next Immediate Action:** Ishan to initialize the Git repo using the "Seeing the Unseen" directory structure and Elizabeth to start the `int32` data compression script.
+**Next Immediate Action:** Prepare the 15-minute Phase 4 presentation. All code, models, and visualisations are complete.
