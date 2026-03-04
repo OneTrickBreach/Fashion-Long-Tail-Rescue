@@ -68,7 +68,7 @@ This is a comprehensive `plan.md` tailored for your team and optimized for a loc
 * ✅ **Cold Start Simulation:** Simulated a "New Product" using only its image vector. Expected: Hero ranks it higher. **Result:** Hero inherently shifted completely unseen items ~6,000 ranks higher than the Villain.
 * ✅ **Tail Rescue:** Hero's tail-item recommendation bias improved from 2.2% to **10.98%**, crushing the >= 8% target.
 
-### [Visuals] Nishant: Matrix Mechanics & Qualitative Rescue — ✅ DONE (completed by Ishan)
+### [Visuals] Nishant: Matrix Mechanics & Qualitative Rescue — ✅ DONE
 
 * ✅ **Matrix Shapes:** Full layer-by-layer Hero forward pass diagram added to `docs/matrix_shapes.md` — shows every tensor interaction with labeled shapes `(B, S, D)`, including multimodal fusion, Transformer encoder, prediction head, and contrastive learning head. Hero-specific notation table, shape summary table, and parameter count breakdown included.
 * ✅ **The "Aha!" Moment:** `evaluate_cold_start.py` updated to capture the top-5 biggest rank improvements (Villain rank − Hero rank) as qualitative rescue examples, with fallback when strict criteria (h_rank≤12 & v_rank>500) aren't met on purely cold-start items.
@@ -153,3 +153,8 @@ This is a comprehensive `plan.md` tailored for your team and optimized for a loc
 | **Nishant Suresh** | Evaluation Dashboard & Presentation Visuals | Matplotlib, Plotly, LaTeX |
 
 **Next Immediate Action:** Prepare the 15-minute Phase 4 presentation. All code, models, and visualisations are complete.
+Action Items:
+i) Review rubrics and plus and minus section of in-class example presentation
+ii) Familiarize ourselves with architectures used in both hero and villian and data processing process.
+
+Meeting: Tenatively scheduled for 1200 Saturday (03/07/2026). Location: TBD.
