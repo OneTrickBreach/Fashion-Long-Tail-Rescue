@@ -126,20 +126,22 @@ This is a comprehensive `plan.md` tailored for your team and optimized for a loc
 
 **Goal:** Prepare for the 15-minute presentation.
 
+> **Status: ✅ COMPLETE** — All checklist items verified, presentation figures generated.
+
 * **Checklist:**
-* [ ] **"Letters never go in":** Ensure all diagrams show embeddings, not text categories.
+* [x] **"Letters never go in":** All diagrams in `docs/matrix_shapes.md` use embedding notation `(B, S, D)`, `(V, 2048)`, `nn.Embedding(V, D)` — no raw text categories in any diagram.
+* [x] **"DFS > BFS":** Single dataset (H&M). Depth via: visual embeddings (ResNet50), contrastive learning (InfoNCE), Jaccard hard-negative mining, multi-objective Pareto sweep, ablation study, cold-start simulation.
+* [x] **"Recursion":** Three-act narrative — Villain (SASRec + pop_bias, blind) → Hero (BST + ResNet50 visual fusion + contrastive) → Brain (multi-objective discovery loss with Pareto sweep). Each iteration one-ups the previous.
+* [x] **"Matrix Detail":** Full layer-by-layer shape annotations for Villain, Hero, and Phase 3 discovery loss in `docs/matrix_shapes.md`. Every tensor labeled with `(B, S, D)` notation.
 
+### Presentation Figures — ✅ DONE
 
-* [ ] **"DFS > BFS":** Verify we didn't add more datasets but went deep into the H&M visual/seq trade-off.
-
-
-* [ ] **Recursion:** Clearly explain how we "one-upped" the Bubblesort Villain.
-
-
-* [ ] **Matrix Detail:** Label shapes (e.g., ) on every layer diagram.
-
-
-
+* ✅ **Presentation Script:** `src/phase4_presentation.py` — generates all presentation-ready figures and prints the three-act narrative summary.
+* ✅ **Model Comparison Chart:** `analytics/presentation/model_comparison.png` — side-by-side nDCG and Coverage bars for Villain, Hero, Hero+Pareto.
+* ✅ **Training Curves:** `analytics/presentation/training_curves.png` — loss and val nDCG convergence for Villain vs Hero.
+* ✅ **Cold-Start Comparison:** `analytics/presentation/cold_start_comparison.png` — average rank bars for Villain, Hero (ID-only), Hero (visual).
+* ✅ **Ablation Visual Lift:** `analytics/presentation/ablation_visual_lift.png` — coverage lift and cold-start rank improvement from visual embeddings.
+* ✅ **Pipeline Integration:** `run_all.py` updated to 10 stages with `--stage presentation` option.
 
 
 ## 6. Task Distribution Summary
