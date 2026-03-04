@@ -1,10 +1,10 @@
-\documentclass[11pt, a4paper, twocolumn]{article}
+\documentclass[11pt, a4paper]{article}
 
 % ── Packages ──────────────────────────────────────────────
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
-\usepackage[margin=2cm]{geometry}
+\usepackage[margin=2.5cm]{geometry}
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage{amsmath, amssymb}
@@ -13,13 +13,22 @@
 \usepackage{caption}
 \usepackage{subcaption}
 \usepackage{float}
+\usepackage{placeins}
 \usepackage{enumitem}
 \usepackage{xcolor}
 \usepackage{microtype}
 \usepackage{authblk}
 \usepackage{abstract}
+\usepackage{titlesec}
+\usepackage{parskip}
 
 \graphicspath{{../analytics/}}
+
+% Force figures to stay in their declared section
+\let\oldsection\section
+\renewcommand{\section}[1]{\FloatBarrier\oldsection{#1}}
+\let\oldsubsection\subsection
+\renewcommand{\subsection}[1]{\FloatBarrier\oldsubsection{#1}}
 
 \hypersetup{
     colorlinks=true,
@@ -27,6 +36,15 @@
     citecolor=blue!60!black,
     urlcolor=blue!60!black,
 }
+
+% Tighten spacing
+\titlespacing*{\section}{0pt}{1.5ex plus 0.5ex}{0.8ex plus 0.2ex}
+\titlespacing*{\subsection}{0pt}{1.2ex plus 0.3ex}{0.6ex plus 0.2ex}
+\titlespacing*{\subsubsection}{0pt}{1.0ex plus 0.2ex}{0.4ex plus 0.1ex}
+\setlength{\abovecaptionskip}{6pt}
+\setlength{\belowcaptionskip}{4pt}
+\setlength{\floatsep}{10pt plus 2pt minus 2pt}
+\setlength{\textfloatsep}{12pt plus 2pt minus 2pt}
 
 % ── Title ─────────────────────────────────────────────────
 \title{\textbf{Seeing the Unseen: Multi-Objective Rescue\\of the Fashion Long Tail}}
@@ -43,6 +61,7 @@
 
 % ══════════════════════════════════════════════════════════
 \begin{abstract}
+\noindent
 Fashion recommendation systems disproportionately promote popular items, burying the vast majority of a retailer's catalog --- the \emph{long tail}.
 We present a three-stage framework that progressively addresses this problem on the H\&M Personalized Fashion dataset (${\sim}31$M transactions, ${\sim}105$K product images).
 \textbf{Stage~1} establishes a deliberately biased baseline (the ``Villain''), a SASRec model augmented with a learnable popularity-bias vector.
@@ -51,6 +70,10 @@ We present a three-stage framework that progressively addresses this problem on 
 At the Pareto-optimal operating point ($\lambda{=}0.3$), catalog coverage rises by $+7.6$ percentage points (pp) and tail-item recommendation rate triples ($2.2\%{\to}6.6\%$) with zero nDCG@12 sacrifice relative to the base Hero.
 A visual ablation further reveals that ResNet50 embeddings improve cold-start item ranking by over 4{,}500 positions.
 \end{abstract}
+
+\vspace{0.5em}
+\hrule
+\vspace{1em}
 
 % ══════════════════════════════════════════════════════════
 \section{Introduction}
@@ -61,7 +84,7 @@ This \emph{popularity bias} creates a self-reinforcing feedback loop: popular it
 Meanwhile, roughly $85\%$ of the catalog --- the \emph{long tail} --- remains invisible to users despite containing products that may better match their individual style.
 
 This project addresses the long-tail gap through a three-act narrative:
-\begin{enumerate}[leftmargin=*,nosep]
+\begin{enumerate}[leftmargin=*,itemsep=2pt]
     \item \textbf{The Villain} --- a position-aware SASRec baseline that is intentionally blind to product images and amplifies popularity bias via a learnable \texttt{pop\_bias} vector.
     \item \textbf{The Hero} --- a Behavior Sequence Transformer (BST) that fuses item-ID embeddings with ResNet50 visual embeddings and is trained with a combined cross-entropy and InfoNCE contrastive loss.
     \item \textbf{The Brain} --- a multi-objective extension that adds a differentiable discovery loss, enabling a tuneable trade-off between ranking accuracy and catalog exploration.
@@ -73,18 +96,18 @@ We evaluate all models on a multi-objective metric suite comprising nDCG@12, MRR
 \section{Related Work}
 \label{sec:related}
 
-\textbf{Sequential recommendation.}
+\textbf{Sequential recommendation.}\quad
 Self-Attentive Sequential Recommendation (SASRec)~\cite{kang2018self} models user purchase sequences via causal Transformer attention and has become a standard baseline in the field.
 
-\textbf{Multimodal recommendation.}
+\textbf{Multimodal recommendation.}\quad
 Behavior Sequence Transformers (BST)~\cite{chen2019behavior} incorporate side information into the Transformer encoder.
 Visual features from CNNs such as ResNet50~\cite{he2016deep} have been shown to improve cold-start and long-tail item representation~\cite{liu2021noninvasive}.
 
-\textbf{Long-tail \& fairness.}
+\textbf{Long-tail \& fairness.}\quad
 Prior work addresses popularity bias through inverse-propensity weighting~\cite{schnabel2016recommendations}, causal debiasing~\cite{zheng2021disentangling}, and multi-objective re-ranking~\cite{pei2019value}.
 Our approach differs by integrating a \emph{differentiable} discovery loss directly into the training objective, avoiding post-hoc re-ranking.
 
-\textbf{Contrastive learning for recommendations.}
+\textbf{Contrastive learning for recommendations.}\quad
 InfoNCE-based contrastive objectives have been applied to create structured embedding spaces~\cite{yao2021self}, and attribute-aware hard-negative mining sharpens the contrastive signal beyond random sampling.
 
 % ══════════════════════════════════════════════════════════
@@ -94,8 +117,9 @@ InfoNCE-based contrastive objectives have been applied to create structured embe
 We use the \textbf{H\&M Personalized Fashion Recommendations} dataset, comprising ${\sim}31$M transactions from ${\sim}1.37$M customers across ${\sim}105$K articles with product images.
 
 \subsection{Sampling \& Temporal Pruning}
+
 To enable local GPU training (NVIDIA RTX 5070 Ti, 12~GB VRAM), we apply stratified sampling:
-\begin{itemize}[leftmargin=*,nosep]
+\begin{itemize}[leftmargin=*,itemsep=2pt]
     \item Retain the most recent 12 weeks of transactions (temporal pruning).
     \item Sample 15\% of users, stratified by the popularity bin of their dominant purchase category, preserving the head/torso/tail distribution.
     \item Filter users with $\geq 5$ interactions.
@@ -104,16 +128,18 @@ The resulting dataset contains \textbf{430{,}879 transactions}, \textbf{36{,}234
 Items with fewer than 10 total purchases are labelled as \emph{long-tail} (${\sim}85\%$ of the catalog).
 
 \subsection{Data Split}
+
 We adopt a \textbf{leave-one-out temporal split}: the last item in each user's sequence is held out for testing, the second-to-last for validation, and the remainder for training.
 Sliding-window augmentation is applied to the training prefix.
 
 \subsection{Visual Embedding Extraction}
+
 All ${\sim}105$K product images are passed through a frozen \textbf{ResNet50} (pre-trained on ImageNet), yielding 2048-dimensional feature vectors per article.
 These are stored as memory-mapped \texttt{.npy} files (${\sim}0.8$~GB).
 
-\begin{figure}[t]
+\begin{figure}[H]
     \centering
-    \includegraphics[width=\linewidth]{metrics/EDA_Long_tail_phase1.png}
+    \includegraphics[width=0.75\textwidth]{metrics/EDA_Long_tail_phase1.png}
     \caption{Visibility skew in the H\&M catalog. The vast majority of articles occupy the long tail with minimal transaction volume, while a small fraction of head items dominate.}
     \label{fig:eda_long_tail}
 \end{figure}
@@ -125,65 +151,69 @@ These are stored as memory-mapped \texttt{.npy} files (${\sim}0.8$~GB).
 \subsection{Act 1: The Villain (SASRec + Popularity Bias)}
 
 The Villain is a \textbf{SASRec}-based sequential recommender with an intentionally added popularity amplifier.
-Its architecture is shown in \Cref{fig:arch_villain}.
 
-\textbf{Embedding layer.}
+\textbf{Embedding layer.}\quad
 Item IDs and position indices are mapped to $D{=}128$-dimensional embeddings via learned lookup tables, then summed and layer-normalised:
 \begin{equation}
     \mathbf{x} = \text{LayerNorm}\!\left(\mathbf{E}_{\text{item}}[\mathbf{s}] + \mathbf{E}_{\text{pos}}[\mathbf{p}]\right)
 \end{equation}
 where $\mathbf{s} \in \mathbb{Z}^{B \times S}$ is the padded item sequence and $\mathbf{p}$ the position indices.
 
-\textbf{Transformer encoder.}
+\textbf{Transformer encoder.}\quad
 A 3-layer causal Transformer encoder with 4 attention heads processes the sequence.
 A causal mask ensures each position attends only to itself and earlier positions.
 
-\textbf{Prediction head.}
+\textbf{Prediction head.}\quad
 The hidden state at the last valid position is projected against the item embedding matrix:
 \begin{equation}
     \mathbf{z} = \mathbf{h}_{\text{last}} \cdot \mathbf{E}_{\text{item}}^\top \in \mathbb{R}^{V}
 \end{equation}
 
-\textbf{Popularity bias.}
+\textbf{Popularity bias.}\quad
 A learnable vector $\mathbf{b} \in \mathbb{R}^{V}$ (initialised to ones) multiplies the logits element-wise: $\hat{\mathbf{z}} = \mathbf{z} \odot \mathbf{b}$.
 This amplifies scores for popular items.
 After training, $\mathbf{b}$ values range from 0.83 to 2.08, confirming the model actively exploits popularity.
 
-\textbf{Training.}
-Cross-entropy loss over the full $V{=}26{,}933$ vocabulary, AdamW optimiser (lr=$10^{-3}$, weight decay $0.01$), ReduceLROnPlateau scheduler, batch size 256, early stopping with patience 10.
+\textbf{Training.}\quad
+Cross-entropy loss over the full $V{=}26{,}933$ vocabulary, AdamW optimiser (lr$\,{=}\,10^{-3}$, weight decay $0.01$), ReduceLROnPlateau scheduler, batch size 256, early stopping with patience 10.
 The model converges in 14 epochs (${\sim}5$ minutes).
 
-\begin{figure}[t]
+The full Villain architecture is shown in \Cref{fig:arch_villain}.
+
+\begin{figure}[H]
     \centering
-    \includegraphics[width=\linewidth]{presentation/arch_villain.png}
-    \caption{Villain architecture: SASRec with learnable popularity bias vector.}
+    \includegraphics[width=0.82\textwidth]{presentation/mermaid_arch_villain.png.png}
+    \caption{Villain architecture: SASRec with learnable popularity bias vector. Input item and position sequences are embedded, summed, and passed through a 3-layer causal Transformer. The output logits are scaled by a learnable popularity bias vector.}
     \label{fig:arch_villain}
 \end{figure}
 
-% ──────────────────────────────────────────────────────────
 \subsection{Act 2: The Hero (BST + Visual Fusion + Contrastive)}
 
 The Hero extends the Villain with \textbf{multimodal fusion} and \textbf{contrastive learning}.
-Its architecture is shown in \Cref{fig:arch_hero}.
 
-\textbf{Visual projection.}
+\textbf{Visual projection.}\quad
 For each item in the sequence, the pre-computed 2048-dim ResNet50 embedding is projected to $D{=}128$ via a learnable linear layer, followed by LayerNorm and dropout:
 \begin{equation}
     \mathbf{v}_{\text{proj}} = \text{Dropout}\!\left(\text{LayerNorm}\!\left(\mathbf{W}_v \mathbf{v} + \mathbf{b}_v\right)\right)
 \end{equation}
 where $\mathbf{W}_v \in \mathbb{R}^{D \times 2048}$.
 
-\textbf{Multimodal fusion.}
+\textbf{Multimodal fusion.}\quad
 The projected visual embedding is added element-wise to the ID + position representation before the Transformer encoder:
 \begin{equation}
     \mathbf{x}_{\text{fused}} = \text{LayerNorm}\!\left(\mathbf{E}_{\text{item}}[\mathbf{s}] + \mathbf{E}_{\text{pos}}[\mathbf{p}] + \mathbf{v}_{\text{proj}}\right)
 \end{equation}
 
-\textbf{Contrastive learning head (InfoNCE).}
+\textbf{Contrastive learning head (InfoNCE).}\quad
 The final hidden state serves as an \emph{anchor}; the target item's embedding is the \emph{positive}; and $N{=}10$ hard negatives are mined via attribute-aware Jaccard similarity (see \S\ref{sec:hardneg}).
 The InfoNCE loss is:
 \begin{equation}
-    \mathcal{L}_{\text{InfoNCE}} = -\log \frac{\exp(\text{sim}(\mathbf{a}, \mathbf{p}^+)/\tau)}{\exp(\text{sim}(\mathbf{a}, \mathbf{p}^+)/\tau) + \sum_{j}\exp(\text{sim}(\mathbf{a}, \mathbf{n}_j)/\tau)}
+\mathcal{L}_{\text{InfoNCE}} = -\log \frac{
+    \exp\!\big(\text{sim}(\mathbf{a}, \mathbf{p}^+)\,/\,\tau\big)
+}{
+    \exp\!\big(\text{sim}(\mathbf{a}, \mathbf{p}^+)\,/\,\tau\big)
+    + {\displaystyle\sum_{j}}\,\exp\!\big(\text{sim}(\mathbf{a}, \mathbf{n}_j)\,/\,\tau\big)
+}
 \end{equation}
 with temperature $\tau{=}0.07$.
 
@@ -192,18 +222,19 @@ with temperature $\tau{=}0.07$.
     \mathcal{L}_{\text{Hero}} = \mathcal{L}_{\text{CE}} + \lambda_{\text{CL}} \cdot \mathcal{L}_{\text{InfoNCE}}, \quad \lambda_{\text{CL}} = 0.3
 \end{equation}
 
-\textbf{Training.}
-AdamW (lr=$5{\times}10^{-4}$, weight decay $0.01$), batch size 128, 50 epochs, early stopping with patience 10.
+\textbf{Training.}\quad
+AdamW (lr$\,{=}\,5{\times}10^{-4}$, weight decay $0.01$), batch size 128, 50 epochs, early stopping with patience 10.
 Dropout is reduced to 0.1 to avoid underfitting on the richer input signal.
 
-\begin{figure}[t]
+The full Hero architecture is shown in \Cref{fig:arch_hero}.
+
+\begin{figure}[H]
     \centering
-    \includegraphics[width=\linewidth]{presentation/arch_hero.png}
-    \caption{Hero architecture: BST with ResNet50 visual fusion and InfoNCE contrastive head.}
+    \includegraphics[width=0.85\textwidth]{presentation/mermaid_arch_hero.png.png}
+    \caption{Hero architecture: Behavior Sequence Transformer with ResNet50 visual fusion and InfoNCE contrastive learning head.}
     \label{fig:arch_hero}
 \end{figure}
 
-% ──────────────────────────────────────────────────────────
 \subsubsection{Attribute-Aware Hard-Negative Mining}
 \label{sec:hardneg}
 
@@ -213,7 +244,6 @@ We replace this with \textbf{Jaccard-based attribute-aware mining}: for each ite
 The full pairwise computation is $O(V^2)$, mitigated by chunked processing (512-row chunks) to cap peak memory.
 The resulting $(V, N)$ index matrix is cached to disk (${\sim}6.3$s to compute, instant reload).
 
-% ──────────────────────────────────────────────────────────
 \subsection{Act 3: The Brain (Multi-Objective Discovery Loss)}
 
 To explicitly control the trade-off between ranking accuracy and catalog exploration, we extend the Hero loss to a \textbf{three-term objective}:
@@ -222,7 +252,7 @@ To explicitly control the trade-off between ranking accuracy and catalog explora
     \label{eq:total_loss}
 \end{equation}
 
-\textbf{Discovery loss.}
+\textbf{Discovery loss.}\quad
 The discovery term penalises placing high softmax mass on popular items:
 \begin{equation}
     \mathcal{L}_{\text{disc}} = \frac{1}{B}\sum_{i=1}^{B} \text{softmax}(\mathbf{z}_i)^\top \cdot \mathbf{q}
@@ -230,15 +260,15 @@ The discovery term penalises placing high softmax mass on popular items:
 where $\mathbf{q} \in \mathbb{R}^{V}$ is a pre-computed popularity logit vector (log-smoothed transaction counts).
 Using soft (softmax-weighted) scores keeps gradients smooth; setting $\lambda_{\text{disc}}{=}0$ exactly recovers Phase~2 behaviour.
 
-The architecture for this loss extension is shown in \Cref{fig:arch_discovery}.
-
-\textbf{Pareto sweep.}
+\textbf{Pareto sweep.}\quad
 We fine-tune the Phase~2 Hero checkpoint for 20 epochs at each $\lambda_{\text{disc}} \in \{0.0, 0.3, 0.7, 1.0\}$, using a fresh AdamW optimiser per sweep point to avoid momentum contamination.
 
-\begin{figure}[t]
+The architecture for the discovery loss extension is shown in \Cref{fig:arch_discovery}.
+
+\begin{figure}[H]
     \centering
-    \includegraphics[width=\linewidth]{presentation/arch_discovery_loss.png}
-    \caption{Discovery loss extension: differentiable penalty on softmax mass over popular items, integrated into the multi-objective loss.}
+    \includegraphics[width=0.85\textwidth]{presentation/mermaid_arch_discovery_loss.png.png}
+    \caption{Discovery loss extension: differentiable penalty on softmax mass over popular items, integrated into the three-term multi-objective loss with tuneable $\lambda_{\text{disc}}$.}
     \label{fig:arch_discovery}
 \end{figure}
 
@@ -247,11 +277,11 @@ We fine-tune the Phase~2 Hero checkpoint for 20 epochs at each $\lambda_{\text{d
 \label{sec:metrics}
 
 We evaluate all models on a multi-objective metric suite:
-\begin{itemize}[leftmargin=*,nosep]
+\begin{itemize}[leftmargin=*,itemsep=2pt]
     \item \textbf{nDCG@12} --- Normalised Discounted Cumulative Gain at rank 12, measuring ranking quality.
     \item \textbf{MRR} --- Mean Reciprocal Rank of the first relevant item.
     \item \textbf{Catalog Coverage} --- fraction of the full catalog appearing in any user's top-12 recommendations.
-    \item \textbf{Tail-Item Rate} --- fraction of all top-12 recommendations that are long-tail items ($<10$ purchases).
+    \item \textbf{Tail-Item Rate} --- fraction of all top-12 recommendations that are long-tail items ($<\!10$ purchases).
 \end{itemize}
 
 % ══════════════════════════════════════════════════════════
@@ -264,11 +294,11 @@ We evaluate all models on a multi-objective metric suite:
 The Villain achieves the highest nDCG@12 (0.145) but at the cost of extreme popularity bias: 76.3\% of its recommendations go to head items and only 2.2\% to tail items.
 The Hero sacrifices 9\% relative nDCG but improves catalog coverage by $+4.2$~pp and nearly doubles the tail-item rate to 4.2\%.
 
-\begin{table}[t]
+\begin{table}[H]
 \centering
 \caption{Main results comparing Villain, Hero, and Pareto-optimal Hero ($\lambda_{\text{disc}}{=}0.3$).}
 \label{tab:main_results}
-\small
+\vspace{4pt}
 \begin{tabular}{@{}lcccc@{}}
 \toprule
 \textbf{Model} & \textbf{nDCG@12} & \textbf{MRR} & \textbf{Coverage} & \textbf{Tail Rate} \\
@@ -282,9 +312,9 @@ Hero ($\lambda{=}1.0$)  & 0.065 & 0.052 & 71.5\% & 88.2\% \\
 \end{tabular}
 \end{table}
 
-\begin{figure}[t]
+\begin{figure}[H]
     \centering
-    \includegraphics[width=\linewidth]{presentation/model_comparison.png}
+    \includegraphics[width=0.78\textwidth]{presentation/model_comparison.png}
     \caption{Side-by-side nDCG@12 and catalog coverage comparison across Villain, Hero, and Pareto-optimal Hero.}
     \label{fig:model_comparison}
 \end{figure}
@@ -295,27 +325,26 @@ Hero ($\lambda{=}1.0$)  & 0.065 & 0.052 & 71.5\% & 88.2\% \\
 The Villain converges rapidly (14 epochs, ${\sim}5$ min) due to its simpler text-only architecture.
 The Hero trains for 44 epochs (${\sim}28$ min) with a gentler convergence curve, reflecting the richer multimodal input and contrastive objective.
 
-\begin{figure}[t]
+\begin{figure}[H]
     \centering
-    \includegraphics[width=\linewidth]{presentation/training_curves.png}
+    \includegraphics[width=0.78\textwidth]{presentation/training_curves.png}
     \caption{Training loss and validation nDCG@12 for the Villain and Hero models.}
     \label{fig:training_curves}
 \end{figure}
 
-% ──────────────────────────────────────────────────────────
 \subsection{Multi-Objective Pareto Analysis}
 
 \Cref{fig:pareto_front} shows the Pareto front in the nDCG@12 vs.\ catalog coverage space.
 The key findings are:
-\begin{itemize}[leftmargin=*,nosep]
+\begin{itemize}[leftmargin=*,itemsep=2pt]
     \item \textbf{$\lambda{=}0.3$ is Pareto-optimal}: coverage jumps $+7.6$~pp (60.0\%$\to$67.6\%) with \emph{no} nDCG sacrifice (0.132$\to$0.133).
     \item At $\lambda{=}0.7$, coverage reaches 74.6\% but nDCG drops to 0.085 --- an unacceptable accuracy loss.
     \item $\lambda{=}1.0$ actually \emph{reduces} coverage (71.5\%) compared to $\lambda{=}0.7$, suggesting the model collapses when discovery pressure is too high.
 \end{itemize}
 
-\begin{figure}[t]
+\begin{figure}[H]
     \centering
-    \includegraphics[width=\linewidth]{pareto/pareto_front.png}
+    \includegraphics[width=0.78\textwidth]{pareto/pareto_front.png}
     \caption{Pareto front: nDCG@12 vs.\ catalog coverage for different $\lambda_{\text{disc}}$ values. The Villain baseline is overlaid. $\lambda{=}0.3$ dominates.}
     \label{fig:pareto_front}
 \end{figure}
@@ -324,25 +353,24 @@ The key findings are:
 At $\lambda{=}0.3$, the tail-item rate rises to 6.6\% (3$\times$ the Villain's 2.2\%).
 Beyond $\lambda{=}0.7$, the model over-corrects, pushing $>80\%$ of recommendations to tail items.
 
-\begin{figure}[t]
+\begin{figure}[H]
     \centering
-    \includegraphics[width=\linewidth]{pareto/tail_rate_curve.png}
+    \includegraphics[width=0.78\textwidth]{pareto/tail_rate_curve.png}
     \caption{Tail-item recommendation rate as a function of discovery loss weight $\lambda_{\text{disc}}$.}
     \label{fig:tail_rate_curve}
 \end{figure}
 
-% ──────────────────────────────────────────────────────────
 \subsection{Visual Ablation Study}
 
 To isolate the contribution of visual features, we train an \textbf{ID-only Hero} (identical architecture minus the \texttt{VisualProjection} module) from scratch with the same hyperparameters.
 Results are shown in \Cref{tab:ablation} and \Cref{fig:ablation}.
 
-\begin{table}[t]
+\begin{table}[H]
 \centering
 \caption{Visual ablation: ID-only Hero vs.\ full Hero with ResNet50 embeddings.}
 \label{tab:ablation}
-\small
-\begin{tabular}{@{}lcccc@{}}
+\vspace{4pt}
+\begin{tabular}{@{}lccc@{}}
 \toprule
 \textbf{Model} & \textbf{nDCG@12} & \textbf{Coverage} & \textbf{Cold-Start Rank} \\
 \midrule
@@ -358,41 +386,38 @@ Hero (visual)    & 0.131 & 61.9\% & 20{,}375 \\
 \textbf{Key insight}: Visual features provide minimal warm-item lift ($\Delta$~nDCG $= +0.03\%$) but \textbf{dramatically improve cold-start ranking} ($\Delta$~avg rank $= +4{,}525$ positions).
 This confirms that ResNet50 embeddings primarily help the model generalise to items with \emph{zero} interaction history --- exactly the long-tail items this project targets.
 
-\begin{figure}[t]
+\begin{figure}[H]
     \centering
-    \includegraphics[width=\linewidth]{presentation/ablation_visual_lift.png}
+    \includegraphics[width=0.78\textwidth]{presentation/ablation_visual_lift.png}
     \caption{Ablation results: coverage lift and cold-start rank improvement from visual embeddings.}
     \label{fig:ablation}
 \end{figure}
 
-% ──────────────────────────────────────────────────────────
 \subsection{Cold-Start Simulation}
 
 We simulate a cold-start scenario by masking 100 randomly selected items from the training set and evaluating their predicted rank.
-Results are shown in \Cref{fig:cold_start}.
 
 The Villain assigns an average rank of 26{,}159 to cold-start items (nearly last out of 26{,}933).
 The Hero with visual features ranks them at 20{,}375 --- an improvement of ${\sim}5{,}784$ positions --- because its visual projection can infer item similarity from the product image alone.
 
-\begin{figure}[t]
+\begin{figure}[H]
     \centering
-    \includegraphics[width=\linewidth]{presentation/cold_start_comparison.png}
+    \includegraphics[width=0.78\textwidth]{presentation/cold_start_comparison.png}
     \caption{Cold-start simulation: average predicted rank for unseen items (lower is better).}
     \label{fig:cold_start}
 \end{figure}
 
-% ──────────────────────────────────────────────────────────
 \subsection{Per-Bucket Analysis}
 
 \Cref{tab:per_bucket} breaks down nDCG@12 by item popularity bucket.
 The Villain dominates on head items (0.184) but collapses on tail items (0.027).
 The Hero's contrastive objective and visual fusion maintain reasonable head performance (0.175) while substantially improving tail nDCG (0.042, $+56\%$).
 
-\begin{table}[t]
+\begin{table}[H]
 \centering
 \caption{Per-bucket nDCG@12 breakdown for Villain and Hero.}
 \label{tab:per_bucket}
-\small
+\vspace{4pt}
 \begin{tabular}{@{}lccc@{}}
 \toprule
 \textbf{Model} & \textbf{Head} & \textbf{Torso} & \textbf{Tail} \\
@@ -409,7 +434,7 @@ Hero    & 0.175 & 0.101 & 0.042 \\
 
 We document key design rationales that guided the project:
 
-\begin{enumerate}[leftmargin=*,nosep]
+\begin{enumerate}[leftmargin=*,itemsep=3pt]
     \item \textbf{Intentional popularity bias in the Villain} (\S\ref{sec:method}): By building bias \emph{into} the baseline, we create a measurable injustice for the Hero to correct, making the Pareto study meaningful.
 
     \item \textbf{SASRec over GRU4Rec}: Self-attention captures long-range sequence dependencies; training completes in ${\sim}5$ minutes with 4.1M parameters on our GPU.
@@ -429,34 +454,34 @@ We document key design rationales that guided the project:
 \section{Implementation Details}
 \label{sec:implementation}
 
-\textbf{Hardware.} All experiments run on a single NVIDIA RTX 5070 Ti (12~GB VRAM) with an Intel/AMD desktop CPU and 32~GB RAM.
+\textbf{Hardware.}\quad All experiments run on a single NVIDIA RTX 5070 Ti (12~GB VRAM) with a desktop CPU and 32~GB RAM.
 
-\textbf{Software.} PyTorch 2.10 (CUDA 12.8), Python 3.11, NumPy, Pandas, scikit-learn, timm (ResNet50 weights), Matplotlib/Seaborn for visualisation.
+\textbf{Software.}\quad PyTorch 2.10 (CUDA 12.8), Python 3.11, NumPy, Pandas, scikit-learn, timm (ResNet50 weights), Matplotlib/Seaborn for visualisation.
 
-\textbf{Parameter counts.}
+\textbf{Parameter counts.}\quad
 The Villain has ${\sim}4.08$M parameters; the Hero has ${\sim}4.11$M parameters (the additional ${\sim}262$K come from the VisualProjection linear layer and its LayerNorm).
 
-\textbf{Reproducibility.}
+\textbf{Reproducibility.}\quad
 All hyperparameters are centralised in \texttt{config.yaml}; random seeds are fixed at 42.
-The full pipeline is executable via \texttt{python run\_all.py --config config.yaml}.
+The full pipeline is executable via \texttt{python run\_all.py -{}-config config.yaml}.
 
 % ══════════════════════════════════════════════════════════
 \section{Discussion}
 \label{sec:discussion}
 
-\textbf{The Pareto sweet spot.}
+\textbf{The Pareto sweet spot.}\quad
 $\lambda_{\text{disc}}{=}0.3$ achieves the rare ``free lunch'' in multi-objective optimisation: it improves both coverage \emph{and} nDCG relative to $\lambda{=}0$.
 We hypothesise that mild discovery pressure acts as a regulariser, preventing the model from overfitting to popular-item shortcuts.
 
-\textbf{Visual features: cold-start is the killer app.}
+\textbf{Visual features: cold-start is the killer app.}\quad
 The ablation reveals that ResNet50 embeddings contribute negligible lift on warm items ($+0.03\%$ nDCG) but are transformative for cold-start items ($+4{,}525$ rank positions).
 This has clear business implications: when launching new products, visual features provide a meaningful signal even before any transaction data exists.
 
-\textbf{Diminishing returns at high $\lambda$.}
+\textbf{Diminishing returns at high $\lambda$.}\quad
 Beyond $\lambda{=}0.7$, coverage actually \emph{decreases} (from 74.6\% to 71.5\% at $\lambda{=}1.0$).
 We attribute this to model collapse: excessive discovery pressure causes the model to uniformly scatter recommendations across random tail items rather than learning meaningful style-based connections.
 
-\textbf{Limitations.}
+\textbf{Limitations.}\quad
 Our evaluation is offline; real-world A/B testing would be needed to validate that improved tail exposure translates to user satisfaction.
 The ResNet50 backbone is frozen; fine-tuning or using a more modern vision encoder (e.g., CLIP, DINOv2) could further improve visual representations.
 
@@ -467,7 +492,7 @@ The ResNet50 backbone is frozen; fine-tuning or using a more modern vision encod
 We presented a three-stage framework for rescuing the fashion long tail in sequential recommendation.
 Starting from a deliberately biased SASRec baseline, we introduced a multimodal BST with contrastive learning and a differentiable discovery loss.
 At the Pareto-optimal operating point ($\lambda_{\text{disc}}{=}0.3$):
-\begin{itemize}[leftmargin=*,nosep]
+\begin{itemize}[leftmargin=*,itemsep=2pt]
     \item Catalog coverage increases by $+7.6$~pp (57.8\%$\to$67.6\%).
     \item Tail-item rate triples (2.2\%$\to$6.6\%).
     \item nDCG@12 is maintained (0.133 vs.\ Villain's 0.145, with zero loss vs.\ the base Hero).
