@@ -185,7 +185,7 @@ L_discovery:       scalar                  — dot(softmax_probs, pop_logit_vect
 
 ---
 
-### 6. Pareto Front Visualisation — *Nishant's portion*
+### 6. [DONE] Pareto Front Visualisation — *Nishant's portion*  *(Task Complete)*
 
 > Build the final plot that tells the business story.
 
@@ -201,7 +201,7 @@ L_discovery:       scalar                  — dot(softmax_probs, pop_logit_vect
 
 ---
 
-### 7. Pipeline Integration & `run_all.py` Update
+### 7. [DONE] Pipeline Integration & `run_all.py` Update  *(Task Complete)*
 
 | # | Sub-task | Details |
 |---|----------|---------|
@@ -225,7 +225,7 @@ L_discovery:       scalar                  — dot(softmax_probs, pop_logit_vect
 
 ---
 
-### 8. Documentation & Business Conclusion
+### 8. [DONE] Documentation & Business Conclusion  *(Task Complete)*
 
 | # | Sub-task | Details |
 |---|----------|---------|
@@ -283,16 +283,16 @@ Day 4 (March 6):  Task 6 (Pareto visualisation) + Task 7 (pipeline integration)
 ## Success Criteria (End of Week 3)
 
 - [x] `MultiObjectiveLoss` implemented with tuneable `λ_disc` parameter
-- [ ] Pareto sweep completed for at least 3 λ values (0.0, 0.3, 0.7)
-- [ ] Results saved to `outputs/pareto_sweep_results.json`
-- [ ] Pareto front plot generated at `analytics/pareto/pareto_front.png`
-- [ ] Ablation study completed: Hero (visual) vs. Hero (ID-only) comparison
-- [ ] Ablation results saved to `outputs/hero_ablation_no_visual.json`
-- [ ] Business conclusion drafted: "By sacrificing X% relevance, we gained Y% discovery"
-- [ ] `run_all.py` updated with Phase 3 stages (ablation, pareto_sweep, pareto_plot)
-- [ ] Decision log updated with Phase 3 design rationale
+- [x] Pareto sweep completed for at least 3 λ values (0.0, 0.3, 0.7)
+- [x] Results saved to `outputs/pareto_sweep_results.json`
+- [x] Pareto front plot generated at `analytics/pareto/pareto_front.png`
+- [x] Ablation study completed: Hero (visual) vs. Hero (ID-only) comparison
+- [x] Ablation results saved to `outputs/hero_ablation_no_visual.json`
+- [x] Business conclusion drafted: "By sacrificing X% relevance, we gained Y% discovery"
+- [x] `run_all.py` updated with Phase 3 stages (ablation, pareto_sweep, pareto_plot)
+- [x] Decision log updated with Phase 3 design rationale
 - [x] All code follows `rules.md` (docstrings, config-driven, no hard-coded paths)
-- [ ] Hard-negative mining upgraded from random to attribute-aware (stretch goal)
+- [x] Hard-negative mining upgraded from random to attribute-aware (stretch goal)
 
 ---
 
@@ -541,3 +541,61 @@ Original cache only checked tensor shape. If Jaccard params changed between runs
 
 **Bug T5-3 — Per-row masking loop (severity: LOW, performance)**
 Self and PAD exclusion used a Python `for` loop over chunk rows. **Fix:** Vectorised with `jaccard[:, 0] = -1.0` and diagonal indexing `jaccard[diag_indices, diag_indices + start] = -1.0`.
+
+---
+
+### March 4, 2026
+
+#### ✅ Task 6: Pareto Front Visualisation — DONE
+
+**What was built:** `src/utils/pareto_plot.py` with `generate_pareto_plots(config)` entry point.
+
+- **Panel 1 — Pareto front:** Catalog Coverage (x) vs nDCG@12 (y).  Hero λ-sweep points as blue dots connected by frontier line, λ=0.3 highlighted as green star (Pareto optimal), Villain baseline as red ×.  Each point annotated with its λ value.
+- **Panel 2 — Tail rate curve:** λ_disc (x) vs Tail Item Rate (y) — demonstrates the tuneable discovery knob.  Each point annotated with its percentage.
+- **Business narrative:** Console print of headline numbers for the presentation.
+- All paths read from `config.yaml` (rules.md §2).  Villain baseline loaded from `outputs/villain_eval_full.json` (not hardcoded).
+- Both plots saved at 300 DPI to `analytics/pareto/`.
+- Module docstring follows rules.md §3 (purpose, team member, key functions).
+
+**Nishant's contribution:** Nishant built an initial version in `src/phase3.py` (standalone script with `plt.show()`).  His concept and plot design were incorporated into the config-driven version.  His file is preserved as-is for attribution.
+
+---
+
+#### ✅ Task 7: Pipeline Integration — DONE
+
+**What was fixed:**
+- `run_all.py` stage numbering corrected from inconsistent `[X/6]` / `[X/9]` to consistent `[X/9]` across all 9 stages.
+- Stage 9 (`pareto_plot`) now correctly imports `generate_pareto_plots` from `src.utils.pareto_plot` (previously referenced a non-existent module).
+- All 9 stages verified: sample → embed → train_villain → train_hero → evaluate → cold_start → ablation → pareto_sweep → pareto_plot.
+
+---
+
+#### ✅ Task 8: Documentation & Business Conclusion — DONE
+
+**8a — Decision log updated** (`docs/decision_log.md`):
+- D10: Multi-Objective Discovery Loss — three-term loss formulation, softmax-weighted pop-logit design.
+- D11: Pareto λ-Discovery Sweep Methodology — fine-tune from checkpoint, fresh optimizer per λ.
+- D12: Visual Ablation Study Design — ID-only Hero from scratch, cold-start impact.
+- D13: Attribute-Aware Hard-Negative Mining — Jaccard-based selection, chunked computation.
+
+**8b — Matrix shapes updated** (`docs/matrix_shapes.md`):
+- Section 5 added: discovery loss tensor shapes (softmax_probs, pop_logit_vector, disc_scores, L_discovery).
+- Hard-negative mining matrix shapes (attr_matrix, jaccard_chunk, neg_idx).
+
+**8c — Business conclusion:**
+By tuning a single λ knob from 0→0.3, we gain +7.6pp catalog discovery (60.0%→67.6%)
+and +2.3pp long-tail exposure (4.2%→6.6%) with zero relevance sacrifice (nDCG actually
+*improves* 0.1319→0.1328).  λ=0.3 is a strictly dominant strategy over the baseline.
+At the aggressive end (λ=0.7), coverage reaches 74.6% and tail rate jumps to 81.7%,
+but at a significant nDCG cost (0.085).  The λ dial gives business stakeholders a
+tuneable control between CTR-optimised and discovery-optimised recommendations.
+
+**8d — Docstrings:** `src/utils/pareto_plot.py` follows rules.md §3 format.
+
+**8e — Config:** All Phase 3 keys documented with inline comments (done in Task 1).
+
+---
+
+#### Phase 3 — COMPLETE ✅
+
+All 8 tasks done.  All success criteria met.  Merged from `week3-nishant` (Nishant's Pareto plot contribution) into main.

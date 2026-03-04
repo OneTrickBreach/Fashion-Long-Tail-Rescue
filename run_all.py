@@ -47,35 +47,35 @@ def main():
 
     # Stage 1: Data Sampling
     if args.stage in ("all", "sample") and not args.skip_sampling:
-        logger.info("[1/6] Sampling data...")
+        logger.info("[1/9] Sampling data...")
         from src.data.sampler import create_sample
         create_sample(config)
 
     # Stage 2: Visual Embedding Extraction + Multimodal Fusion
     if args.stage in ("all", "embed"):
-        logger.info("[2/6] Extracting visual embeddings...")
+        logger.info("[2/9] Extracting visual embeddings...")
         from src.data.extract_visual_embeddings import extract_all
         extract_all(config)
 
-        logger.info("[2/6] Fusing multimodal embeddings...")
+        logger.info("[2/9] Fusing multimodal embeddings...")
         from src.data.fuse_multimodal_embeddings import fuse_all
         fuse_all(config)
 
     # Stage 3: Train Villain (Baseline)
     if args.stage in ("all", "train_villain"):
-        logger.info("[3/6] Training the Villain (baseline)...")
+        logger.info("[3/9] Training the Villain (baseline)...")
         from src.villain.trainer import train_villain
         train_villain(config)
 
     # Stage 4: Train Hero (Main Model)
     if args.stage in ("all", "train_hero"):
-        logger.info("[4/6] Training the Hero (main model)...")
+        logger.info("[4/9] Training the Hero (main model)...")
         from src.hero.trainer import train_hero
         train_hero(config)
 
     # Stage 5: Evaluate Both Models
     if args.stage in ("all", "evaluate"):
-        logger.info("[5/6] Evaluating both models...")
+        logger.info("[5/9] Evaluating both models...")
         from src.villain.evaluate import evaluate_villain
         evaluate_villain(config)
 

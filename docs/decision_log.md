@@ -1,8 +1,8 @@
-# Decision Log — Villain Baseline
-### CS7180 Seeing the Unseen | Author: Ishan Biswas
+# Decision Log — Seeing the Unseen
+### CS7180 | Author: Ishan Biswas
 
-> This document records the *why* behind key design choices in the Villain
-> baseline, as required by the CS7180 rubric and `rules.md §7`.
+> This document records the *why* behind key design choices across all phases,
+> as required by the CS7180 rubric and `rules.md §7`.
 
 ---
 
@@ -137,3 +137,76 @@ periodic latest checkpoint enables overnight training recovery.
 **Decision:** InfoNCE Contrastive Loss combined with Cross Entropy (Loss = CE + λCL).
 
 **Rationale:** Pure CE loss heavily penalizes predicting niche items when a popular item was chosen. By adding an auxiliary contrastive learning objective, we explicitly pull in-session items closer in the embedding space while pushing negative samples apart. This creates a structurally sound multi-modal embedding space where the Hero can confidently recommend visually similar tail items without getting heavily penalized.
+
+---
+
+## D10. Multi-Objective Discovery Loss (Phase 3)
+
+**Decision:** Extend the Hero loss to a three-term objective:
+`L_total = L_CE + λ_CL * L_contrastive + λ_disc * L_discovery`, where
+`L_discovery = mean(dot(softmax(logits), pop_logit_vector))`.
+
+**Rationale:**
+- The discovery term penalises placing high softmax mass on popular items.
+- Using soft (softmax-weighted) popularity logits keeps gradients smooth — no hard
+  top-K selection that would block gradient flow.
+- `λ_disc = 0` reproduces exact Phase 2 behaviour (verified via regression test),
+  so the extension is backward-compatible.
+
+**Trade-off:** Items with zero transactions needed special handling (default to
+`min(pop_logit_dict)` rather than `0.0`) to avoid treating unseen items as more
+popular than rare items.
+
+---
+
+## D11. Pareto λ-Discovery Sweep Methodology (Phase 3)
+
+**Decision:** Fine-tune from the Phase 2 Hero checkpoint for each `λ_disc` value
+(0.0, 0.3, 0.7, 1.0) rather than training from scratch.
+
+**Rationale:**
+- Fine-tuning saves ~75% GPU time (~20 epochs × 40s vs 50 epochs × 40s per λ).
+- A fresh AdamW optimizer + scheduler is created per λ to avoid momentum
+  contamination between sweep points.
+- Results are saved incrementally to `outputs/pareto_sweep_results.json` so the
+  sweep survives interruption.
+
+**Result:** λ=0.3 is the Pareto-optimal sweet spot — coverage jumps +7.6pp
+(60.0% → 67.6%) with virtually no nDCG sacrifice (0.1319 → 0.1328).
+
+---
+
+## D12. Visual Ablation Study Design (Phase 3)
+
+**Decision:** Train an ID-only Hero (same architecture minus `VisualProjection`)
+from scratch with identical hyperparameters for a fair comparison.
+
+**Rationale:**
+- The `HeroModel` already supports a `use_visual` toggle, so no architecture
+  changes were needed — just `config.yaml → hero.use_visual: false`.
+- Training from scratch (not fine-tuning) ensures the ID-only model reaches its
+  own optimum rather than being anchored to visual-dependent weights.
+
+**Result:** Visual features provide minimal warm-item lift (Δ nDCG +0.03%) but
+dramatically improve cold-start ranking (Δ avg rank +4,525 positions — lower is
+better). This confirms that ResNet50 embeddings primarily help the model
+generalise to items with zero interaction history.
+
+---
+
+## D13. Attribute-Aware Hard-Negative Mining (Phase 3)
+
+**Decision:** Replace random negative sampling with Jaccard-based attribute-aware
+mining. Hard negatives are items with partial attribute overlap (Jaccard ∈ [0.3, 0.7])
+on `product_group_name`, `colour_group_name`, `garment_group_name`.
+
+**Rationale:**
+- Random negatives are often trivially dissimilar (e.g., a shoe vs. a hat), providing
+  weak contrastive signal.
+- Attribute-aware negatives force the model to distinguish items that share *some*
+  but not *all* properties, sharpening the embedding space.
+- Pre-computed and cached as a `(num_items, num_negatives)` matrix (~6.3s for 26,933
+  items × 10 negatives); cached reload is instant.
+
+**Trade-off:** Full pairwise Jaccard is O(n²), mitigated by chunked computation
+(512-row chunks) to cap peak memory at O(512 × N).
