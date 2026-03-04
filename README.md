@@ -34,7 +34,7 @@ Behavior Sequence Transformer with an Attribute-Aware Contrastive Learning head
 | **Phase 1** | Data Engineering & Custom Baseline (Villain) | ✅ Complete |
 | **Phase 2** | The "Hero" Model — Style & Sequential Intent | ✅ Complete |
 | **Phase 3** | Multi-Objective Pareto Study | ✅ Complete |
-| **Phase 4** | Final Submission & Presentation | 🔲 Pending |
+| **Phase 4** | Final Submission & Presentation | ✅ Complete |
 
 ### Key Results
 
@@ -59,7 +59,7 @@ but dramatically improve cold-start ranking (+4,525 positions).
 ADLProject1/
 │
 ├── README.md                         # ← You are here
-├── run_all.py                        # Master script: 9-stage pipeline (sample → ... → pareto_plot)
+├── run_all.py                        # Master script: 10-stage pipeline (sample → ... → presentation)
 ├── requirements.txt                  # Pip-installable dependencies
 ├── config.yaml                       # Central hyper-parameters & paths (single source of truth)
 ├── plan.md                           # Project plan & task distribution
@@ -100,6 +100,7 @@ ADLProject1/
 │   │   └── config.py                 # Hero-specific hyperparameter defaults
 │   │
 │   ├── phase3.py                     # Nishant's standalone Pareto plot script
+│   ├── phase4_presentation.py        # Phase 4: presentation figure generation + narrative
 │   │
 │   └── utils/                        # Shared utilities
 │       ├── __init__.py
@@ -108,14 +109,19 @@ ADLProject1/
 │       ├── pareto_plot.py            # Phase 3: Pareto front & tail-rate curve plots
 │       └── EDA.py                    # Visibility skew chart (long-tail visualization)
 │
+├── scripts/
+│   └── render_diagrams.py            # One-off: render ASCII diagrams to PNG
+│
 ├── docs/
 │   ├── matrix_shapes.md              # Full tensor shape documentation (Villain + Hero)
+│   ├── architecture_diagrams.md      # Mermaid flowcharts for all 3 acts
 │   ├── decision_log.md               # Design decisions D1–D13 with rationale
 │   └── phase2_nishant_review.md      # Review & refinements to Nishant's Phase 2 work
 │
 ├── analytics/
 │   ├── metrics/                      # Evaluation outputs & metric logs
-│   └── pareto/                       # Pareto front plot + tail-rate curve (300 DPI)
+│   ├── pareto/                       # Pareto front plot + tail-rate curve (300 DPI)
+│   └── presentation/                 # Slide-ready figures (model comparison, training curves, etc.)
 │
 ├── notebooks/                        # Exploratory & presentation notebooks
 │
@@ -142,7 +148,7 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 # 3. Install remaining dependencies
 pip install -r requirements.txt
 
-# 4. Run the full pipeline (all 9 stages)
+# 4. Run the full pipeline (all 10 stages)
 python run_all.py --config config.yaml
 
 # Or run individual stages:
@@ -154,6 +160,7 @@ python run_all.py --stage evaluate        # 5-6. Evaluate both + cold-start anal
 python run_all.py --stage ablation        # 7. Visual ablation study (ID-only Hero)
 python run_all.py --stage pareto_sweep    # 8. Multi-objective λ sweep
 python run_all.py --stage pareto_plot     # 9. Generate Pareto front visualisation
+python run_all.py --stage presentation    # 10. Generate presentation figures
 ```
 
 ---
